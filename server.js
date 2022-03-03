@@ -53,7 +53,13 @@ class EleventyServeAdapter {
   }
 
   getOutputDirFilePath(filepath, filename = "") {
-    let computedPath = path.join(this.config.dir.output, filepath, filename);
+    let computedPath;
+    if(filename === ".html") {
+      // avoid trailing slash on filepath/.html
+      computedPath = path.join(this.config.dir.output, filepath) + filename;
+    } else {
+      computedPath = path.join(this.config.dir.output, filepath, filename);
+    }
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
     let absComputedPath = this.templatePath.absolutePath(computedPath);
@@ -229,26 +235,25 @@ class EleventyServeAdapter {
           if (mimeType === "text/html") {
             res.setHeader("Content-Type", mimeType);
             res.end(this.augmentContentWithNotifier(contents.toString()));
-          } else {
-            if (mimeType) {
-              res.setHeader("Content-Type", mimeType);
-            }
-            res.end(contents);
+            return;
           }
-        } else {
-          // TODO add support for 404 pages (in different Jamstack server configurations)
-          if (match.url) {
-            res.writeHead(match.statusCode, {
-              Location: match.url,
-            });
-            res.end();
-          } else {
-            next();
+          if (mimeType) {
+            res.setHeader("Content-Type", mimeType);
           }
+          res.end(contents);
+          return;
         }
-      } else {
-        next();
+        // TODO add support for 404 pages (in different Jamstack server configurations)
+        if (match.url) {
+          res.writeHead(match.statusCode, {
+            Location: match.url,
+          });
+          res.end();
+          return;
+        }
       }
+
+      next();
     });
 
     this.portRetryCount = 0;

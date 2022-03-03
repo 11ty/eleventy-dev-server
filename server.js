@@ -26,46 +26,34 @@ class EleventyServeAdapter {
     this.name = name;
 
     this.options = Object.assign({
-      folder: ".11ty"
+      enabled: true,    // Enable live reload at all
+      folder: ".11ty",  // Change the name of the special folder used for injected scripts
     }, options);
 
     this.fileCache = {};
     
-    let requiredDependencyKeys = ["config", "templatePath", "pathPrefixer", "templatePath"];
+    let requiredDependencyKeys = ["logger", "outputDir", "templatePath", "transformUrl", "pathPrefix"];
     for(let key of requiredDependencyKeys) {
       if(!deps[key]) {
         throw new Error(`Missing injected upstream dependency: ${key}`);
       }
     }
 
-    let { logger, templatePath, pathPrefixer, config } = deps;
-    this.config = config;
+    let { logger, templatePath, transformUrl, pathPrefix, outputDir } = deps;
     this.logger = logger;
+    this.outputDir = outputDir;
     this.templatePath = templatePath;
-    this.pathPrefixer = pathPrefixer;
-  }
-
-  get config() {
-    if (!this._config) {
-      throw new EleventyServeConfigError(
-        "You need to set the config property on EleventyServeAdapter."
-      );
-    }
-
-    return this._config;
-  }
-
-  set config(config) {
-    this._config = config;
+    this.transformUrl = transformUrl; // add pathPrefix to template urls for client comparison
+    this.pathPrefix = pathPrefix;
   }
 
   getOutputDirFilePath(filepath, filename = "") {
     let computedPath;
     if(filename === ".html") {
       // avoid trailing slash on filepath/.html
-      computedPath = path.join(this.config.dir.output, filepath) + filename;
+      computedPath = path.join(this.outputDir, filepath) + filename;
     } else {
-      computedPath = path.join(this.config.dir.output, filepath, filename);
+      computedPath = path.join(this.outputDir, filepath, filename);
     }
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
@@ -98,17 +86,14 @@ class EleventyServeAdapter {
     let u = new URL(url, "http://localhost/");
     url = u.pathname;
 
-    let pathPrefix = this.pathPrefixer.normalizePathPrefix(
-      this.config.pathPrefix
-    );
-    if (pathPrefix !== "/") {
-      if (!url.startsWith(pathPrefix)) {
+    if (this.pathPrefix !== "/") {
+      if (!url.startsWith(this.pathPrefix)) {
         return {
           statusCode: 404,
         };
       }
 
-      url = url.substr(pathPrefix.length);
+      url = url.substr(this.pathPrefix.length);
     }
 
     let rawPath = this.getOutputDirFilePath(url);
@@ -214,10 +199,10 @@ class EleventyServeAdapter {
           if (e.statusCode === 404) {
             let localPath = this.templatePath.stripLeadingSubPath(
               e.path,
-              this.templatePath.absolutePath(this.config.dir.output)
+              this.templatePath.absolutePath(this.outputDir)
             );
             this.logger.error(
-              `HTTP ${e.statusCode}: Template not found in output directory (${this.config.dir.output}): ${localPath}`
+              `HTTP ${e.statusCode}: Template not found in output directory (${this.outputDir}): ${localPath}`
             );
           } else {
             this.logger.error(`HTTP ${e.statusCode}: ${e.message}`);
@@ -241,7 +226,7 @@ class EleventyServeAdapter {
         if (match.statusCode === 200 && match.filepath) {
           let contents = fs.readFileSync(match.filepath);
           let mimeType = mime.getType(match.filepath);
-          if (mimeType === "text/html") {
+          if (mimeType === "text/html" && this.options.enabled !== false) {
             res.setHeader("Content-Type", mimeType);
             res.end(this.augmentContentWithNotifier(contents.toString()));
             return;
@@ -363,9 +348,6 @@ class EleventyServeAdapter {
 
   // TODO make this smarter, allow clients to subscribe to specific URLs and only send updates for those URLs
   async reload({ subtype, files, build }) {
-    let pathprefix = this.pathPrefixer.normalizePathPrefix(
-      this.config.pathPrefix
-    );
     if (build.templates) {
       build.templates = build.templates
         .filter(entry => !!entry)
@@ -375,7 +357,7 @@ class EleventyServeAdapter {
         })
         .map(entry => {
           // Add pathPrefix to all template urls
-          entry.url = this.pathPrefixer.joinUrlParts(pathprefix, entry.url);
+          entry.url = this.transformUrl(this.pathPrefix, entry.url);
           return entry;
         });
     }

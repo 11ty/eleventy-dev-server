@@ -3,6 +3,7 @@ const fs = require("fs");
 const finalhandler = require("finalhandler");
 const { createServer } = require("http");
 const { WebSocketServer } = require("ws");
+const mime = require('mime');
 const debug = require("debug")("EleventyServeAdapter");
 
 const MAX_PORT_ASSIGNMENT_RETRIES = 10;
@@ -21,6 +22,7 @@ class EleventyServeAdapter {
 
   constructor(name, deps = {}) {
     this.name = name;
+    this.fileCache = {};
     
     let requiredDependencyKeys = ["config", "templatePath", "pathPrefixer", "templatePath"];
     for(let key of requiredDependencyKeys) {
@@ -79,7 +81,8 @@ class EleventyServeAdapter {
    *    /resource/ matches /resource/index.html
    */
   mapUrlToFilePath(url) {
-    let u = new URL(url, "http://localhost/"); // this localhost is not used
+    // Note: `localhost` is not important here, any host would work
+    let u = new URL(url, "http://localhost/");
     url = u.pathname;
 
     let pathPrefix = this.pathPrefixer.normalizePathPrefix(
@@ -144,22 +147,22 @@ class EleventyServeAdapter {
     };
   }
 
-  get notifierClientContents() {
-    if (!this._notifierClientContents) {
-      let filepath = this.templatePath.absolutePath(
-        __dirname,
-        "client.js"
-      );
-      this._notifierClientContents = fs.readFileSync(filepath, {
-        encoding: "utf8",
-      });
+  _getFileContents(localpath) {
+    if(this.fileCache[localpath]) {
+      return this.fileCache[localpath];
     }
 
-    return this._notifierClientContents;
+    let filepath = this.templatePath.absolutePath(
+      __dirname,
+      localpath
+    );
+    return fs.readFileSync(filepath, {
+      encoding: "utf8",
+    });
   }
 
   augmentContentWithNotifier(content) {
-    let script = `<script type="module">${this.notifierClientContents}</script>`;
+    let script = `<script type="module" src="/.11ty/reload-client.js"></script>`;
 
     // <title> is the only *required* element in an HTML document
     if (content.includes("</title>")) {
@@ -207,23 +210,28 @@ class EleventyServeAdapter {
         },
       });
 
-      let textMimeTypes = {
-        css: "css",
-        js: "javascript",
-      };
-
+      if(req.url === "/.11ty/reload-client.js") {
+        res.setHeader("Content-Type", mime.getType("js"));
+        res.end(this._getFileContents("./client/reload-client.js"));
+        return;
+      } else if(req.url === "/.11ty/morphdom.js") {
+        res.setHeader("Content-Type", mime.getType("js"));
+        res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js"));
+        return;
+      }
+      
       // TODO add the reload notifier to error pages too!
       let match = this.mapUrlToFilePath(req.url);
       if (match) {
         if (match.statusCode === 200 && match.filepath) {
-          let contents = fs.readFileSync(match.filepath, { encoding: "utf8" });
-          if (match.filepath.endsWith(".html")) {
-            res.setHeader("Content-Type", "text/html");
-            res.end(this.augmentContentWithNotifier(contents));
+          let contents = fs.readFileSync(match.filepath);
+          let mimeType = mime.getType(match.filepath);
+          if (mimeType === "text/html") {
+            res.setHeader("Content-Type", mimeType);
+            res.end(this.augmentContentWithNotifier(contents.toString()));
           } else {
-            let extension = match.filepath.split(".").pop();
-            if (textMimeTypes[extension]) {
-              res.setHeader("Content-Type", "text/" + textMimeTypes[extension]);
+            if (mimeType) {
+              res.setHeader("Content-Type", mimeType);
             }
             res.end(contents);
           }
@@ -363,7 +371,6 @@ class EleventyServeAdapter {
       subtype,
       files,
       build,
-      pathprefix,
     });
   }
 }

@@ -8,6 +8,7 @@
   "license": "ISC",
   "dependencies": {
     "finalhandler": "^1.1.2",
+    "mime": "^3.0.0",
     "morphdom": "^2.6.1",
     "ws": "^8.5.0"
   }

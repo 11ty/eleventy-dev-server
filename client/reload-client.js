@@ -1,8 +1,4 @@
 (function () {
-  if (!("WebSocket" in window)) {
-    return;
-  }
-
   class Util {
     static pad(num, digits = 2) {
       let zeroes = new Array(digits + 1).join(0);
@@ -38,7 +34,7 @@
       }
     }
 
-    static async onreload({ subtype, files, build, pathprefix }) {
+    static async onreload({ subtype, files, build }) {
       if (subtype === "css") {
         for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
           let url = new URL(link.href);
@@ -47,9 +43,8 @@
         }
         Util.log(`CSS updated without page reload.`);
       } else {
-        const { default: morphdom } = await import(
-          `${pathprefix || "/"}morphdom-esm.js`
-        );
+        // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
+        const { default: morphdom } = await import(`./morphdom.js`);
 
         let morphed = false;
         // Util.log( JSON.stringify(build.templates, null, 2) );
@@ -86,6 +81,10 @@
     }
 
     static init(options = {}) {
+      if (!("WebSocket" in window)) {
+        return;
+      }
+
       Util.log("Trying to connect…");
 
       let { port } = new URL(document.location.href);

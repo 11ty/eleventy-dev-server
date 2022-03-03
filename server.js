@@ -3,7 +3,9 @@ const fs = require("fs");
 const finalhandler = require("finalhandler");
 const { createServer } = require("http");
 const { WebSocketServer } = require("ws");
-const mime = require('mime');
+const mime = require("mime");
+const ssri = require("ssri");
+
 const debug = require("debug")("EleventyServeAdapter");
 
 const MAX_PORT_ASSIGNMENT_RETRIES = 10;
@@ -20,8 +22,13 @@ class EleventyServeAdapter {
     return serverCache[name];
   }
 
-  constructor(name, deps = {}) {
+  constructor(name, deps = {}, options = {}) {
     this.name = name;
+
+    this.options = Object.assign({
+      folder: ".11ty"
+    }, options);
+
     this.fileCache = {};
     
     let requiredDependencyKeys = ["config", "templatePath", "pathPrefixer", "templatePath"];
@@ -30,7 +37,7 @@ class EleventyServeAdapter {
         throw new Error(`Missing injected upstream dependency: ${key}`);
       }
     }
-    
+
     let { logger, templatePath, pathPrefixer, config } = deps;
     this.config = config;
     this.logger = logger;
@@ -168,7 +175,9 @@ class EleventyServeAdapter {
   }
 
   augmentContentWithNotifier(content) {
-    let script = `<script type="module" src="/.11ty/reload-client.js"></script>`;
+    // This isn’t super necessary because it’s a local file, but it’s included anyway
+    let integrity = ssri.fromData(this._getFileContents("./client/reload-client.js"));
+    let script = `<script type="module" integrity="${integrity}" src="/${this.options.folder}/reload-client.js"></script>`;
 
     // <title> is the only *required* element in an HTML document
     if (content.includes("</title>")) {
@@ -216,11 +225,11 @@ class EleventyServeAdapter {
         },
       });
 
-      if(req.url === "/.11ty/reload-client.js") {
+      if(req.url === `/${this.options.folder}/reload-client.js`) {
         res.setHeader("Content-Type", mime.getType("js"));
         res.end(this._getFileContents("./client/reload-client.js"));
         return;
-      } else if(req.url === "/.11ty/morphdom.js") {
+      } else if(req.url === `/${this.options.folder}/morphdom.js`) {
         res.setHeader("Content-Type", mime.getType("js"));
         res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js"));
         return;

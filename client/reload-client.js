@@ -1,4 +1,4 @@
-(function () {
+;(function () {
   class Util {
     static pad(num, digits = 2) {
       let zeroes = new Array(digits + 1).join(0);

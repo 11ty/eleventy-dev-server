@@ -1,0 +1,14 @@
+{
+  "name": "@11ty/eleventy-serve",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "finalhandler": "^1.1.2",
+    "morphdom": "^2.6.1",
+    "ws": "^8.5.0"
+  }
+}

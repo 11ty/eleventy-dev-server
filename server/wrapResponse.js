@@ -26,7 +26,11 @@ function wrapResponse(resp, transformHtml) {
       this._contentType = getContentType(headers);
     }
 
-    resp._wrappedOriginalWriteHead(statusCode, ...args);
+    if((this._contentType || "").startsWith("text/html")) {
+      resp._wrappedHeaders.push([statusCode, ...args]);
+    } else {
+      resp._wrappedOriginalWriteHead(statusCode, ...args);
+    }
   }
 
   // data can be a String or Buffer
@@ -47,34 +51,38 @@ function wrapResponse(resp, transformHtml) {
   // data can be a String or Buffer
   resp.end = function(data, ...args) {
     if(typeof resp._writeCache === "string" || typeof data === "string") {
+      // Strings
       if(!resp._writeCache) {
         resp._writeCache = "";
       }
-
       if(typeof data === "string") {
         resp._writeCache += data;
       }
 
-      // Strings
       let result = this._writeCache;
 
-      // we can’t inject snippet if headers have already been sent
-      // because we need to change the content-length header
-      if(!resp.headersSent) {
-        // Only transform HTML
-        // Note the “setHeader versus writeHead” note on https://nodejs.org/api/http.html#responsewriteheadstatuscode-statusmessage-headers
-        let contentType = resp._contentType || getContentType(resp.getHeaders());
-        if(contentType.startsWith("text/html")) {
-          if(this._wrappedTransformHtml && typeof this._wrappedTransformHtml === "function") {
-            result = this._wrappedTransformHtml(result);
-            resp.setHeader("Content-Length", Buffer.byteLength(result));
-          }
+      // Only transform HTML
+      // Note the “setHeader versus writeHead” note on https://nodejs.org/api/http.html#responsewriteheadstatuscode-statusmessage-headers
+      let contentType = resp._contentType || getContentType(resp.getHeaders());
+      // console.log( resp.req.url, contentType );
+      if(contentType.startsWith("text/html")) {
+        if(this._wrappedTransformHtml && typeof this._wrappedTransformHtml === "function") {
+          result = this._wrappedTransformHtml(result);
+          resp.setHeader("Content-Length", Buffer.byteLength(result));
         }
+      }
+
+      for(let headers of resp._wrappedHeaders) {
+        resp._wrappedOriginalWriteHead(...headers);
       }
 
       resp._wrappedOriginalEnd(result, ...args);
     } else {
       // Buffers
+      for(let headers of resp._wrappedHeaders) {
+        resp._wrappedOriginalWriteHead(...headers);
+      }
+
       resp._wrappedOriginalEnd(data, ...args);
     }
 

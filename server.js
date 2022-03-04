@@ -5,11 +5,18 @@ const { createServer } = require("http");
 const { WebSocketServer } = require("ws");
 const mime = require("mime");
 const ssri = require("ssri");
-
+const devip = require("dev-ip");
 const debug = require("debug")("EleventyServeAdapter");
 
-const MAX_PORT_ASSIGNMENT_RETRIES = 10;
+const wrapResponse = require("./server/wrapResponse.js");
+
 const serverCache = {};
+const DEFAULT_OPTIONS = {
+  enabled: true,        // Enable live reload at all
+  showAllHosts: false,  // IP address based hosts (other than localhost)
+  folder: ".11ty",      // Change the name of the special folder used for injected scripts
+  portReassignmentRetryCount: 10, // number of times to increment the port if in use
+}
 
 class EleventyServeAdapter {
   static getServer(...args) {
@@ -24,12 +31,7 @@ class EleventyServeAdapter {
 
   constructor(name, deps = {}, options = {}) {
     this.name = name;
-
-    this.options = Object.assign({
-      enabled: true,    // Enable live reload at all
-      folder: ".11ty",  // Change the name of the special folder used for injected scripts
-    }, options);
-
+    this.options = Object.assign({}, DEFAULT_OPTIONS, options);
     this.fileCache = {};
     
     let requiredDependencyKeys = ["logger", "outputDir", "templatePath", "transformUrl", "pathPrefix"];
@@ -50,7 +52,7 @@ class EleventyServeAdapter {
   getOutputDirFilePath(filepath, filename = "") {
     let computedPath;
     if(filename === ".html") {
-      // avoid trailing slash on filepath/.html
+      // avoid trailing slash for filepath/.html requests
       computedPath = path.join(this.outputDir, filepath) + filename;
     } else {
       computedPath = path.join(this.outputDir, filepath, filename);
@@ -188,84 +190,101 @@ class EleventyServeAdapter {
     return (content || "") + script;
   }
 
+  requestMiddleware(req, res) {
+    let next = finalhandler(req, res, {
+      onerror: (e) => {
+        if (e.statusCode === 404) {
+          let localPath = this.templatePath.stripLeadingSubPath(
+            e.path,
+            this.templatePath.absolutePath(this.outputDir)
+          );
+          this.logger.error(
+            `HTTP ${e.statusCode}: Template not found in output directory (${this.outputDir}): ${localPath}`
+          );
+        } else {
+          this.logger.error(`HTTP ${e.statusCode}: ${e.message}`);
+        }
+      },
+    });
+
+    if(req.url === `/${this.options.folder}/reload-client.js`) {
+      res.setHeader("Content-Type", mime.getType("js"));
+      return res.end(this._getFileContents("./client/reload-client.js"));
+    } else if(req.url === `/${this.options.folder}/morphdom.js`) {
+      res.setHeader("Content-Type", mime.getType("js"));
+      return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js"));
+    }
+
+    let match = this.mapUrlToFilePath(req.url);
+    if (match) {
+      if (match.statusCode === 200 && match.filepath) {
+        let contents = fs.readFileSync(match.filepath);
+        let mimeType = mime.getType(match.filepath);
+        if (mimeType === "text/html" && this.options.enabled !== false) {
+          res.setHeader("Content-Type", mimeType);
+          return res.end(contents);
+        }
+
+        if (mimeType) {
+          res.setHeader("Content-Type", mimeType);
+        }
+        return res.end(contents);
+      }
+
+      // TODO add support for 404 pages (in different Jamstack server configurations)
+      if (match.url) {
+        res.writeHead(match.statusCode, {
+          Location: match.url,
+        });
+        return res.end();
+      }
+    }
+
+    next();
+  }
+
   get server() {
     if (this._server) {
       return this._server;
     }
 
-    this._server = createServer((req, res) => {
-      let next = finalhandler(req, res, {
-        onerror: (e) => {
-          if (e.statusCode === 404) {
-            let localPath = this.templatePath.stripLeadingSubPath(
-              e.path,
-              this.templatePath.absolutePath(this.outputDir)
-            );
-            this.logger.error(
-              `HTTP ${e.statusCode}: Template not found in output directory (${this.outputDir}): ${localPath}`
-            );
-          } else {
-            this.logger.error(`HTTP ${e.statusCode}: ${e.message}`);
-          }
-        },
+    this._server = createServer(async (req, res) => {
+      res = wrapResponse(res, content => {
+        return this.augmentContentWithNotifier(content);
       });
 
-      if(req.url === `/${this.options.folder}/reload-client.js`) {
-        res.setHeader("Content-Type", mime.getType("js"));
-        res.end(this._getFileContents("./client/reload-client.js"));
-        return;
-      } else if(req.url === `/${this.options.folder}/morphdom.js`) {
-        res.setHeader("Content-Type", mime.getType("js"));
-        res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js"));
-        return;
-      }
-      
-      // TODO add the reload notifier to error pages too!
-      let match = this.mapUrlToFilePath(req.url);
-      if (match) {
-        if (match.statusCode === 200 && match.filepath) {
-          let contents = fs.readFileSync(match.filepath);
-          let mimeType = mime.getType(match.filepath);
-          if (mimeType === "text/html" && this.options.enabled !== false) {
-            res.setHeader("Content-Type", mimeType);
-            res.end(this.augmentContentWithNotifier(contents.toString()));
-            return;
-          }
-          if (mimeType) {
-            res.setHeader("Content-Type", mimeType);
-          }
-          res.end(contents);
-          return;
+      let middlewares = this.configurationOptions.middleware || [];
+      if(middlewares.length) {
+        let nexts = [];
+        // Iterate over those middlewares
+        middlewares.forEach((ware, index) => {
+          let nextWare = middlewares[index + 1] || this.requestMiddleware.bind(this, req, res);
+          nexts.push(ware.bind(null, req, res, nextWare));
+        });
+        for(let ware of nexts) {
+          await ware();
         }
-        // TODO add support for 404 pages (in different Jamstack server configurations)
-        if (match.url) {
-          res.writeHead(match.statusCode, {
-            Location: match.url,
-          });
-          res.end();
-          return;
-        }
+      } else {
+        this.requestMiddleware(req, res)
       }
-
-      next();
     });
 
     this.portRetryCount = 0;
     this._server.on("error", (err) => {
       if (err.code == "EADDRINUSE") {
-        if (this.portRetryCount < MAX_PORT_ASSIGNMENT_RETRIES) {
+        if (this.portRetryCount < this.options.portReassignmentRetryCount) {
           this.portRetryCount++;
           debug(
             "Server already using port %o, trying the next port %o. Retry number %o of %o",
             err.port,
             err.port + 1,
             this.portRetryCount,
-            MAX_PORT_ASSIGNMENT_RETRIES
+            this.options.portReassignmentRetryCount
           );
           this.serverListen(err.port + 1);
         } else {
           throw new Error(
-            `Tried ${MAX_PORT_ASSIGNMENT_RETRIES} different ports but they were all in use. You can a different starter port using --port on the command line.`
+            `Tried ${this.options.portReassignmentRetryCount} different ports but they were all in use. You can a different starter port using --port on the command line.`
           );
         }
       } else {
@@ -276,8 +295,15 @@ class EleventyServeAdapter {
     this._server.on("listening", (e) => {
       this.setupReloadNotifier();
       let { port } = this._server.address();
+
+      let hostsStr = "";
+      if(this.options.showAllHosts) {
+        let hosts = devip().map(host => `http://${host}:${port}${this.pathPrefix} or`);
+        hostsStr = hosts.join(" ") + " ";
+      }
+
       this.logger.message(
-        `Server running at http://localhost:${port}/`,
+        `Server at ${hostsStr}http://localhost:${port}${this.pathPrefix} `,
         "log",
         "blue",
         true
@@ -293,8 +319,9 @@ class EleventyServeAdapter {
     });
   }
 
-  init(options) {
-    this.serverListen(options.port);
+  init(configurationOptions) {
+    this.configurationOptions = configurationOptions;
+    this.serverListen(configurationOptions.port);
   }
 
   serverErrorHandler(err) {
@@ -346,7 +373,6 @@ class EleventyServeAdapter {
     });
   }
 
-  // TODO make this smarter, allow clients to subscribe to specific URLs and only send updates for those URLs
   async reload({ subtype, files, build }) {
     if (build.templates) {
       build.templates = build.templates

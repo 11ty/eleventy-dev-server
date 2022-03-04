@@ -7,6 +7,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dev-ip": "^1.0.1",
     "finalhandler": "^1.1.2",
     "mime": "^3.0.0",
     "morphdom": "^2.6.1",

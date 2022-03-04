@@ -1,5 +1,5 @@
 {
-  "name": "@11ty/eleventy-serve",
+  "name": "@11ty/eleventy-dev-server",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",

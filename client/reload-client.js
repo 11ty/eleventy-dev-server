@@ -42,34 +42,39 @@ class EleventyReload {
       }
       Util.log(`CSS updated without page reload.`);
     } else {
-      // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
-      const { default: morphdom } = await import(`./morphdom.js`);
-
       let morphed = false;
-      // Util.log( JSON.stringify(build.templates, null, 2) );
-      for (let template of build.templates || []) {
-        if (template.url === document.location.pathname) {
-          // Importantly, if this does not match but is still relevant
-          // (layout/include/etc), a full reload happens below.
-          // This could be improved.
-          if ((files || []).includes(template.inputPath)) {
-            // Notable limitation: this won’t re-run script elements
-            morphed = true;
-            morphdom(document.documentElement, template.content, {
-              // Speed-up trick from morphdom docs
-              onBeforeElUpdated: function (fromEl, toEl) {
-                // https://dom.spec.whatwg.org/#concept-node-equals
-                if (fromEl.isEqualNode(toEl)) {
-                  return false;
-                }
-                return true;
-              },
-            });
 
-            Util.log(`HTML delta applied without page reload.`);
+      try {
+        // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
+        const { default: morphdom } = await import(`./morphdom.js`);
+  
+        // Util.log( JSON.stringify(build.templates, null, 2) );
+        for (let template of build.templates || []) {
+          if (template.url === document.location.pathname) {
+            // Importantly, if this does not match but is still relevant
+            // (layout/include/etc), a full reload happens below.
+            // This could be improved.
+            if ((files || []).includes(template.inputPath)) {
+              // Notable limitation: this won’t re-run script elements
+              morphed = true;
+              morphdom(document.documentElement, template.content, {
+                // Speed-up trick from morphdom docs
+                onBeforeElUpdated: function (fromEl, toEl) {
+                  // https://dom.spec.whatwg.org/#concept-node-equals
+                  if (fromEl.isEqualNode(toEl)) {
+                    return false;
+                  }
+                  return true;
+                },
+              });
+  
+              Util.log(`HTML delta applied without page reload.`);
+            }
+            break;
           }
-          break;
         }
+      } catch(e) {
+        Util.error( "Morphdom error", e );
       }
 
       if (!morphed) {

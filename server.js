@@ -1,7 +1,6 @@
 const path = require("path");
 const fs = require("fs");
 const finalhandler = require("finalhandler");
-const { createServer } = require("http");
 const { WebSocketServer } = require("ws");
 const mime = require("mime");
 const ssri = require("ssri");
@@ -162,10 +161,17 @@ class EleventyServeAdapter {
     });
   }
 
-  augmentContentWithNotifier(content) {
+  augmentContentWithNotifier(content, inlineContents = false, options = {}) {
+    let { integrityHash, scriptContents } = options;
+    if(!scriptContents) {
+      scriptContents = this._getFileContents("./client/reload-client.js");
+    }
+    if(!integrityHash) {
+      integrityHash = ssri.fromData(scriptContents);
+    }
+
     // This isn’t super necessary because it’s a local file, but it’s included anyway
-    let integrity = ssri.fromData(this._getFileContents("./client/reload-client.js"));
-    let script = `<script type="module" integrity="${integrity}" src="/${this.options.folder}/reload-client.js"></script>`;
+    let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.folder}/reload-client.js">`}</script>`;
 
     // <title> is the only *required* element in an HTML document
     if (content.includes("</title>")) {
@@ -250,10 +256,22 @@ class EleventyServeAdapter {
       return this._server;
     }
 
+    const { createServer } = require("http");
     this._server = createServer(async (req, res) => {
       res = wrapResponse(res, content => {
         if(this.options.enabled !== false) {
-          return this.augmentContentWithNotifier(content);
+          let scriptContents = this._getFileContents("./client/reload-client.js");
+          let integrityHash = ssri.fromData(scriptContents);
+
+          if(res.statusCode !== 200) {
+            // Content-Security-Policy: script-src 'sha256-B2yPHKaXnvFWtRChIbabYmUBFZdVfKKXHbWtWidDVF8='
+            res.setHeader("Content-Security-Policy", `script-src '${integrityHash}'`);
+          }
+
+          return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
+            scriptContents,
+            integrityHash
+          });
         }
         return content;
       });
@@ -377,7 +395,8 @@ class EleventyServeAdapter {
     });
   }
 
-  async reload({ subtype, files, build }) {
+  async reload(event) {
+    let { subtype, files, build } = event;
     if (build.templates) {
       build.templates = build.templates
         .filter(entry => !!entry)

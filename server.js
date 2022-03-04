@@ -12,6 +12,7 @@ const wrapResponse = require("./server/wrapResponse.js");
 
 const serverCache = {};
 const DEFAULT_OPTIONS = {
+  port: 8080,
   enabled: true,        // Enable live reload at all
   showAllHosts: false,  // IP address based hosts (other than localhost)
   folder: ".11ty",      // Change the name of the special folder used for injected scripts
@@ -220,9 +221,10 @@ class EleventyServeAdapter {
       if (match.statusCode === 200 && match.filepath) {
         let contents = fs.readFileSync(match.filepath);
         let mimeType = mime.getType(match.filepath);
-        if (mimeType === "text/html" && this.options.enabled !== false) {
+        if (mimeType === "text/html") {
           res.setHeader("Content-Type", mimeType);
-          return res.end(contents);
+          // the string is important here, wrapResponse expects strings internally for HTML content (for now)
+          return res.end(contents.toString());
         }
 
         if (mimeType) {
@@ -250,10 +252,13 @@ class EleventyServeAdapter {
 
     this._server = createServer(async (req, res) => {
       res = wrapResponse(res, content => {
-        return this.augmentContentWithNotifier(content);
+        if(this.options.enabled !== false) {
+          return this.augmentContentWithNotifier(content);
+        }
+        return content;
       });
 
-      let middlewares = this.configurationOptions.middleware || [];
+      let middlewares = this.options.middleware || [];
       if(middlewares.length) {
         let nexts = [];
         // Iterate over those middlewares
@@ -281,14 +286,14 @@ class EleventyServeAdapter {
             this.portRetryCount,
             this.options.portReassignmentRetryCount
           );
-          this.serverListen(err.port + 1);
+          this._serverListen(err.port + 1);
         } else {
           throw new Error(
             `Tried ${this.options.portReassignmentRetryCount} different ports but they were all in use. You can a different starter port using --port on the command line.`
           );
         }
       } else {
-        this.serverErrorHandler(err);
+        this._serverErrorHandler(err);
       }
     });
 
@@ -313,18 +318,17 @@ class EleventyServeAdapter {
     return this._server;
   }
 
-  serverListen(port) {
+  _serverListen(port) {
     this.server.listen({
       port,
     });
   }
 
-  init(configurationOptions) {
-    this.configurationOptions = configurationOptions;
-    this.serverListen(configurationOptions.port);
+  init(options) {
+    this._serverListen(options.port);
   }
 
-  serverErrorHandler(err) {
+  _serverErrorHandler(err) {
     if (err.code == "EADDRINUSE") {
       this.logger.error(`Server error: Port in use ${err.port}`);
     } else {
@@ -348,7 +352,7 @@ class EleventyServeAdapter {
     });
 
     updateServer.on("error", (err) => {
-      this.serverErrorHandler(err);
+      this._serverErrorHandler(err);
     });
   }
 

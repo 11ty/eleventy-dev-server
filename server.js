@@ -17,6 +17,12 @@ const DEFAULT_OPTIONS = {
   folder: ".11ty",      // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
+  pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
+}
+
+const loggerFallback = {
+  info: console.log,
+  error: console.error,
 }
 
 class EleventyServeAdapter {
@@ -30,33 +36,37 @@ class EleventyServeAdapter {
     return serverCache[name];
   }
 
-  constructor(name, deps = {}, options = {}) {
+  constructor(name, dir, options = {}, deps = {}) {
     this.name = name;
     this.options = Object.assign({}, DEFAULT_OPTIONS, options);
     this.fileCache = {};
-    
-    let requiredDependencyKeys = ["logger", "outputDir", "templatePath", "transformUrl", "pathPrefix"];
+
+    // Directory to serve
+    if(!dir) {
+      throw new Error("Missing `dir` to serve.");
+    }
+    this.dir = dir;
+
+    let requiredDependencyKeys = ["templatePath"];
     for(let key of requiredDependencyKeys) {
       if(!deps[key]) {
         throw new Error(`Missing injected upstream dependency: ${key}`);
       }
     }
 
-    let { logger, templatePath, transformUrl, pathPrefix, outputDir } = deps;
-    this.logger = logger;
-    this.outputDir = outputDir;
+    let { logger, templatePath } = deps;
+    this.logger = logger || loggerFallback;
+
     this.templatePath = templatePath;
-    this.transformUrl = transformUrl; // add pathPrefix to template urls for client comparison
-    this.pathPrefix = pathPrefix;
   }
 
   getOutputDirFilePath(filepath, filename = "") {
     let computedPath;
     if(filename === ".html") {
       // avoid trailing slash for filepath/.html requests
-      computedPath = path.join(this.outputDir, filepath) + filename;
+      computedPath = path.join(this.dir, filepath) + filename;
     } else {
-      computedPath = path.join(this.outputDir, filepath, filename);
+      computedPath = path.join(this.dir, filepath, filename);
     }
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
@@ -89,14 +99,14 @@ class EleventyServeAdapter {
     let u = new URL(url, "http://localhost/");
     url = u.pathname;
 
-    if (this.pathPrefix !== "/") {
-      if (!url.startsWith(this.pathPrefix)) {
+    if (this.options.pathPrefix !== "/") {
+      if (!url.startsWith(this.options.pathPrefix)) {
         return {
           statusCode: 404,
         };
       }
 
-      url = url.substr(this.pathPrefix.length);
+      url = url.substr(this.options.pathPrefix.length);
     }
 
     let rawPath = this.getOutputDirFilePath(url);
@@ -203,15 +213,19 @@ class EleventyServeAdapter {
   }
 
   requestMiddleware(req, res) {
+    // Known issue with `finalhandler` and HTTP/2:
+    // UnsupportedWarning: Status message is not supported by HTTP/2 (RFC7540 8.1.2.4)
+    // https://github.com/pillarjs/finalhandler/pull/34
+
     let next = finalhandler(req, res, {
       onerror: (e) => {
         if (e.statusCode === 404) {
           let localPath = this.templatePath.stripLeadingSubPath(
             e.path,
-            this.templatePath.absolutePath(this.outputDir)
+            this.templatePath.absolutePath(this.dir)
           );
           this.logger.error(
-            `HTTP ${e.statusCode}: Template not found in output directory (${this.outputDir}): ${localPath}`
+            `HTTP ${e.statusCode}: Template not found in output directory (${this.dir}): ${localPath}`
           );
         } else {
           this.logger.error(`HTTP ${e.statusCode}: ${e.message}`);
@@ -349,17 +363,12 @@ class EleventyServeAdapter {
 
       let hostsStr = "";
       if(this.options.showAllHosts) {
-        let hosts = devip().map(host => `${this._serverProtocol}//${host}:${port}${this.pathPrefix} or`);
+        // TODO what happens when the cert doesn’t cover non-localhost hosts?
+        let hosts = devip().map(host => `${this._serverProtocol}//${host}:${port}${this.options.pathPrefix} or`);
         hostsStr = hosts.join(" ") + " ";
       }
 
-      // TODO will likely need error messaging around incorrectly configured certs for non-localhosts?
-      this.logger.message(
-        `Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.pathPrefix} `,
-        "log",
-        "blue",
-        true
-      );
+      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix} `);
     });
 
     return this._server;
@@ -430,15 +439,9 @@ class EleventyServeAdapter {
     let { subtype, files, build } = event;
     if (build.templates) {
       build.templates = build.templates
-        .filter(entry => !!entry)
         .filter(entry => {
           // Filter to only include watched templates that were updated
           return (files || []).includes(entry.inputPath);
-        })
-        .map(entry => {
-          // Add pathPrefix to all template urls
-          entry.url = this.transformUrl(this.pathPrefix, entry.url);
-          return entry;
         });
     }
 

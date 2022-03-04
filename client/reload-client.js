@@ -91,9 +91,10 @@ class EleventyReload {
 
     Util.log("Trying to connect…");
 
-    let { port } = new URL(document.location.href);
+    let { protocol, port } = new URL(document.location.href);
+    let websocketProtocol = protocol.replace("http", "ws");
     // TODO add a path here so that it doesn’t collide with any app websockets
-    let socket = new WebSocket(`ws://localhost:${port}`);
+    let socket = new WebSocket(`${websocketProtocol}//localhost:${port}`);
 
     // TODO add special handling for disconnect or document focus to retry
     socket.addEventListener("message", async function (event) {

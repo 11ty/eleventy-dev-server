@@ -16,6 +16,7 @@ const DEFAULT_OPTIONS = {
   showAllHosts: false,  // IP address based hosts (other than localhost)
   folder: ".11ty",      // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
+  https: {},            // `key` and `cert`, required for http/2 and https
 }
 
 class EleventyServeAdapter {
@@ -147,7 +148,7 @@ class EleventyServeAdapter {
     };
   }
 
-  _getFileContents(localpath) {
+  _getFileContents(localpath, useCache = true) {
     if(this.fileCache[localpath]) {
       return this.fileCache[localpath];
     }
@@ -156,9 +157,13 @@ class EleventyServeAdapter {
       __dirname,
       localpath
     );
-    return fs.readFileSync(filepath, {
+    let contents = fs.readFileSync(filepath, {
       encoding: "utf8",
     });
+    if(useCache) {
+      this.fileCache[localpath] = contents;
+    }
+    return contents;
   }
 
   augmentContentWithNotifier(content, inlineContents = false, options = {}) {
@@ -223,6 +228,9 @@ class EleventyServeAdapter {
     }
 
     let match = this.mapUrlToFilePath(req.url);
+    // console.log( req.url, match );
+    debug( req.url, match );
+
     if (match) {
       if (match.statusCode === 200 && match.filepath) {
         let contents = fs.readFileSync(match.filepath);
@@ -251,46 +259,66 @@ class EleventyServeAdapter {
     next();
   }
 
+  async onRequestHandler (req, res) {
+    res = wrapResponse(res, content => {
+      if(this.options.enabled !== false) {
+        let scriptContents = this._getFileContents("./client/reload-client.js");
+        let integrityHash = ssri.fromData(scriptContents);
+
+        // finalhandler error pages have a Content-Security-Policy that prevented the client script from executing
+        if(res.statusCode !== 200) {
+          res.setHeader("Content-Security-Policy", `script-src '${integrityHash}'`);
+        }
+
+        return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
+          scriptContents,
+          integrityHash
+        });
+      }
+      return content;
+    });
+
+    let middlewares = this.options.middleware || [];
+    if(middlewares.length) {
+      let nexts = [];
+      // Iterate over those middlewares
+      middlewares.forEach((ware, index) => {
+        let nextWare = middlewares[index + 1] || this.requestMiddleware.bind(this, req, res);
+        nexts.push(ware.bind(null, req, res, nextWare));
+      });
+      for(let ware of nexts) {
+        await ware();
+      }
+    } else {
+      this.requestMiddleware(req, res)
+    }
+  }
+
   get server() {
     if (this._server) {
       return this._server;
     }
 
-    const { createServer } = require("http");
-    this._server = createServer(async (req, res) => {
-      res = wrapResponse(res, content => {
-        if(this.options.enabled !== false) {
-          let scriptContents = this._getFileContents("./client/reload-client.js");
-          let integrityHash = ssri.fromData(scriptContents);
+    // Check for secure server requirements, otherwise use HTTP
+    let { key, cert } = this.options.https;
+    if(key && cert) {
+      const { createSecureServer } = require("http2");
 
-          if(res.statusCode !== 200) {
-            // Content-Security-Policy: script-src 'sha256-B2yPHKaXnvFWtRChIbabYmUBFZdVfKKXHbWtWidDVF8='
-            res.setHeader("Content-Security-Policy", `script-src '${integrityHash}'`);
-          }
+      let options = {
+        allowHTTP1: true,
 
-          return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
-            scriptContents,
-            integrityHash
-          });
-        }
-        return content;
-      });
+        // Credentials
+        key: fs.readFileSync(key),
+        cert: fs.readFileSync(cert),
+      };
+      this._server = createSecureServer(options, this.onRequestHandler.bind(this));
+      this._serverProtocol = "https:";
+    } else {
+      const { createServer } = require("http");
 
-      let middlewares = this.options.middleware || [];
-      if(middlewares.length) {
-        let nexts = [];
-        // Iterate over those middlewares
-        middlewares.forEach((ware, index) => {
-          let nextWare = middlewares[index + 1] || this.requestMiddleware.bind(this, req, res);
-          nexts.push(ware.bind(null, req, res, nextWare));
-        });
-        for(let ware of nexts) {
-          await ware();
-        }
-      } else {
-        this.requestMiddleware(req, res)
-      }
-    });
+      this._server = createServer(this.onRequestHandler.bind(this));
+      this._serverProtocol = "http:";
+    }
 
     this.portRetryCount = 0;
     this._server.on("error", (err) => {
@@ -321,12 +349,13 @@ class EleventyServeAdapter {
 
       let hostsStr = "";
       if(this.options.showAllHosts) {
-        let hosts = devip().map(host => `http://${host}:${port}${this.pathPrefix} or`);
+        let hosts = devip().map(host => `${this._serverProtocol}//${host}:${port}${this.pathPrefix} or`);
         hostsStr = hosts.join(" ") + " ";
       }
 
+      // TODO will likely need error messaging around incorrectly configured certs for non-localhosts?
       this.logger.message(
-        `Server at ${hostsStr}http://localhost:${port}${this.pathPrefix} `,
+        `Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.pathPrefix} `,
         "log",
         "blue",
         true
@@ -381,6 +410,8 @@ class EleventyServeAdapter {
   }
 
   exit() {
+    this.server.close();
+
     this.sendUpdateNotification({
       type: "eleventy.status",
       status: "disconnected",

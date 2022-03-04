@@ -12,11 +12,12 @@ function getContentType(headers) {
 
 // Inspired by `resp-modifier` https://github.com/shakyShane/resp-modifier/blob/4a000203c9db630bcfc3b6bb8ea2abc090ae0139/index.js
 function wrapResponse(resp, transformHtml) {
-  resp._wrappedHeaders = [];
-  resp._wrappedTransformHtml = transformHtml;
   resp._wrappedOriginalWrite = resp.write;
   resp._wrappedOriginalWriteHead = resp.writeHead;
   resp._wrappedOriginalEnd = resp.end;
+
+  resp._wrappedHeaders = [];
+  resp._wrappedTransformHtml = transformHtml;
 
   // Original signature writeHead(statusCode[, statusMessage][, headers])
   resp.writeHead = function(statusCode, ...args) {
@@ -27,70 +28,70 @@ function wrapResponse(resp, transformHtml) {
     }
 
     if((this._contentType || "").startsWith("text/html")) {
-      resp._wrappedHeaders.push([statusCode, ...args]);
+      this._wrappedHeaders.push([statusCode, ...args]);
     } else {
-      resp._wrappedOriginalWriteHead(statusCode, ...args);
+      return this._wrappedOriginalWriteHead(statusCode, ...args);
     }
+    return this;
   }
 
   // data can be a String or Buffer
   resp.write = function(data, ...args) {
     if(typeof data === "string") {
-      if(!resp._writeCache) {
-        resp._writeCache = "";
+      if(!this._writeCache) {
+        this._writeCache = "";
       }
 
       // TODO encoding and callback args
-      resp._writeCache += data;
+      this._writeCache += data;
     } else {
       // Buffers
-      resp._wrappedOriginalWrite(data, ...args);
+      return this._wrappedOriginalWrite(data, ...args);
     }
+    return this;
   }
 
   // data can be a String or Buffer
-  resp.end = function(data, ...args) {
-    if(typeof resp._writeCache === "string" || typeof data === "string") {
+  resp.end = function(data, encoding, callback) {
+    if(typeof this._writeCache === "string" || typeof data === "string") {
       // Strings
-      if(!resp._writeCache) {
-        resp._writeCache = "";
+      if(!this._writeCache) {
+        this._writeCache = "";
       }
       if(typeof data === "string") {
-        resp._writeCache += data;
+        this._writeCache += data;
       }
 
       let result = this._writeCache;
 
       // Only transform HTML
       // Note the “setHeader versus writeHead” note on https://nodejs.org/api/http.html#responsewriteheadstatuscode-statusmessage-headers
-      let contentType = resp._contentType || getContentType(resp.getHeaders());
-      // console.log( resp.req.url, contentType );
+      let contentType = this._contentType || getContentType(this.getHeaders());
       if(contentType.startsWith("text/html")) {
         if(this._wrappedTransformHtml && typeof this._wrappedTransformHtml === "function") {
           result = this._wrappedTransformHtml(result);
-          resp.setHeader("Content-Length", Buffer.byteLength(result));
+          this.setHeader("Content-Length", Buffer.byteLength(result));
         }
       }
 
-      for(let headers of resp._wrappedHeaders) {
-        resp._wrappedOriginalWriteHead(...headers);
+      for(let headers of this._wrappedHeaders) {
+        this._wrappedOriginalWriteHead(...headers);
       }
 
-      resp._wrappedOriginalEnd(result, ...args);
+      this._writeCache = [];
+      this._wrappedOriginalWrite(result, encoding)
+      return this._wrappedOriginalEnd(callback);
     } else {
       // Buffers
-      for(let headers of resp._wrappedHeaders) {
-        resp._wrappedOriginalWriteHead(...headers);
+      for(let headers of this._wrappedHeaders) {
+        this._wrappedOriginalWriteHead(...headers);
       }
 
-      resp._wrappedOriginalEnd(data, ...args);
+      this._wrappedOriginalWrite(data, encoding);
+      return this._wrappedOriginalEnd(callback);
     }
 
-
-    resp._writeCache = [];
-    resp.write = resp._wrappedOriginalWrite;
-    resp.writeHead = resp._wrappedOriginalWriteHead;
-    resp.end = resp._wrappedOriginalEnd;
+    return this;
   }
 
   return resp;

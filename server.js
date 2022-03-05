@@ -5,6 +5,8 @@ const { WebSocketServer } = require("ws");
 const mime = require("mime");
 const ssri = require("ssri");
 const devip = require("dev-ip");
+const { TemplatePath } = require("@11ty/eleventy-utils");
+
 const debug = require("debug")("EleventyServeAdapter");
 
 const wrapResponse = require("./server/wrapResponse.js");
@@ -18,11 +20,12 @@ const DEFAULT_OPTIONS = {
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
-}
 
-const loggerFallback = {
-  info: console.log,
-  error: console.error,
+  // Logger (fancier one is injected by Eleventy)
+  logger: {
+    info: console.log,
+    error: console.error,
+  }
 }
 
 class EleventyServeAdapter {
@@ -36,7 +39,7 @@ class EleventyServeAdapter {
     return serverCache[name];
   }
 
-  constructor(name, dir, options = {}, deps = {}) {
+  constructor(name, dir, options = {}) {
     this.name = name;
     this.options = Object.assign({}, DEFAULT_OPTIONS, options);
     this.fileCache = {};
@@ -46,18 +49,7 @@ class EleventyServeAdapter {
       throw new Error("Missing `dir` to serve.");
     }
     this.dir = dir;
-
-    let requiredDependencyKeys = ["templatePath"];
-    for(let key of requiredDependencyKeys) {
-      if(!deps[key]) {
-        throw new Error(`Missing injected upstream dependency: ${key}`);
-      }
-    }
-
-    let { logger, templatePath } = deps;
-    this.logger = logger || loggerFallback;
-
-    this.templatePath = templatePath;
+    this.logger = this.options.logger;
   }
 
   getOutputDirFilePath(filepath, filename = "") {
@@ -70,8 +62,8 @@ class EleventyServeAdapter {
     }
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
-    let absComputedPath = this.templatePath.absolutePath(computedPath);
-    let absOutputDir = this.templatePath.absolutePath(computedPath);
+    let absComputedPath = TemplatePath.absolutePath(computedPath);
+    let absOutputDir = TemplatePath.absolutePath(computedPath);
     if (!absComputedPath.startsWith(absOutputDir)) {
       throw new Error("Invalid path");
     }
@@ -80,7 +72,7 @@ class EleventyServeAdapter {
   }
 
   isOutputFilePathExists(rawPath) {
-    return fs.existsSync(rawPath) && !this.templatePath.isDirectorySync(rawPath);
+    return fs.existsSync(rawPath) && !TemplatePath.isDirectorySync(rawPath);
   }
 
   /* Use conventions documented here https://www.zachleat.com/web/trailing-slash/
@@ -163,7 +155,7 @@ class EleventyServeAdapter {
       return this.fileCache[localpath];
     }
 
-    let filepath = this.templatePath.absolutePath(
+    let filepath = TemplatePath.absolutePath(
       __dirname,
       localpath
     );
@@ -220,9 +212,9 @@ class EleventyServeAdapter {
     let next = finalhandler(req, res, {
       onerror: (e) => {
         if (e.statusCode === 404) {
-          let localPath = this.templatePath.stripLeadingSubPath(
+          let localPath = TemplatePath.stripLeadingSubPath(
             e.path,
-            this.templatePath.absolutePath(this.dir)
+            TemplatePath.absolutePath(this.dir)
           );
           this.logger.error(
             `HTTP ${e.statusCode}: Template not found in output directory (${this.dir}): ${localPath}`
@@ -453,4 +445,5 @@ class EleventyServeAdapter {
     });
   }
 }
+
 module.exports = EleventyServeAdapter;

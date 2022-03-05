@@ -7,6 +7,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@11ty/eleventy-utils": "^1.0.0",
+    "debug": "^4.3.3",
     "dev-ip": "^1.0.1",
     "finalhandler": "^1.1.2",
     "mime": "^3.0.0",

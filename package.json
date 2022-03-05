@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
+  "scripts": {
+    "test": "npx ava"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -15,5 +18,8 @@
     "morphdom": "^2.6.1",
     "ssri": "^8.0.1",
     "ws": "^8.5.0"
+  },
+  "devDependencies": {
+    "ava": "^4.0.1"
   }
 }

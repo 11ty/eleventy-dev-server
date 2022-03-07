@@ -87,7 +87,9 @@ function wrapResponse(resp, transformHtml) {
         this._wrappedOriginalWriteHead(...headers);
       }
 
-      this._wrappedOriginalWrite(data, encoding);
+      if(data) {
+        this._wrappedOriginalWrite(data, encoding);
+      }
       return this._wrappedOriginalEnd(callback);
     }
 

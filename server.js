@@ -19,6 +19,7 @@ const DEFAULT_OPTIONS = {
   folder: ".11ty",      // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
+
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
 
   // Logger (fancier one is injected by Eleventy)
@@ -372,8 +373,8 @@ class EleventyServeAdapter {
     });
   }
 
-  init(options) {
-    this._serverListen(options.port);
+  serve(port) {
+    this._serverListen(port);
   }
 
   _serverErrorHandler(err) {
@@ -402,6 +403,8 @@ class EleventyServeAdapter {
     updateServer.on("error", (err) => {
       this._serverErrorHandler(err);
     });
+
+    this.updateServer = updateServer;
   }
 
   sendUpdateNotification(obj) {
@@ -410,13 +413,15 @@ class EleventyServeAdapter {
     }
   }
 
-  exit() {
-    this.server.close();
-
+  close() {
+    // TODO would be awesome to set a delayed redirect when port changed to redirect to new _server_
     this.sendUpdateNotification({
       type: "eleventy.status",
       status: "disconnected",
     });
+
+    this.server.close();
+    this.updateServer.close();
   }
 
   sendError({ error }) {

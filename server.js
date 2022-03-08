@@ -57,11 +57,11 @@ class EleventyServeAdapter {
     let computedPath;
     if(filename === ".html") {
       // avoid trailing slash for filepath/.html requests
-      let entry = path.join(this.dir, filepath);
-      if(entry.endsWith(path.sep)) {
-        entry = entry.substring(0, entry.length - path.sep.length);
+      let prefix = path.join(this.dir, filepath);
+      if(prefix.endsWith(path.sep)) {
+        prefix = prefix.substring(0, prefix.length - path.sep.length);
       }
-      computedPath = entry + filename;
+      computedPath = prefix + filename;
     } else {
       computedPath = path.join(this.dir, filepath, filename);
     }

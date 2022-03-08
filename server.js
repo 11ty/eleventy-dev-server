@@ -57,7 +57,11 @@ class EleventyServeAdapter {
     let computedPath;
     if(filename === ".html") {
       // avoid trailing slash for filepath/.html requests
-      computedPath = path.join(this.dir, filepath) + filename;
+      let entry = path.join(this.dir, filepath);
+      if(entry.endsWith(path.sep)) {
+        entry = entry.substring(0, entry.length - path.sep.length);
+      }
+      computedPath = entry + filename;
     } else {
       computedPath = path.join(this.dir, filepath, filename);
     }
@@ -92,6 +96,7 @@ class EleventyServeAdapter {
     let u = new URL(url, "http://localhost/");
     url = u.pathname;
 
+    // Remove PathPrefix from start of URL
     if (this.options.pathPrefix !== "/") {
       if (!url.startsWith(this.options.pathPrefix)) {
         return {
@@ -117,32 +122,33 @@ class EleventyServeAdapter {
     let htmlExists = fs.existsSync(htmlPath);
 
     // /resource/ => /resource/index.html
-    if (indexHtmlExists) {
-      if (url.endsWith("/")) {
-        return {
-          statusCode: 200,
-          filepath: indexHtmlPath,
-        };
-      }
+    if (indexHtmlExists && url.endsWith("/")) {
+      return {
+        statusCode: 200,
+        filepath: indexHtmlPath,
+      };
+    }
+    // /resource => resource.html
+    if (htmlExists && !url.endsWith("/")) {
+      return {
+        statusCode: 200,
+        filepath: htmlPath,
+      };
+    }
 
+    // /resource => redirect to /resource/
+    if (indexHtmlExists && !url.endsWith("/")) {
       return {
         statusCode: 301,
         url: url + "/",
       };
     }
 
-    // /resource => resource.html
-    if (htmlExists) {
-      if (!url.endsWith("/")) {
-        return {
-          statusCode: 200,
-          filepath: htmlPath,
-        };
-      }
-
+    // /resource/ => reidrect to /resource
+    if (htmlExists && url.endsWith("/")) {
       return {
         statusCode: 301,
-        url: url + "/",
+        url: url.substring(0, url.length - 1),
       };
     }
 
@@ -420,8 +426,12 @@ class EleventyServeAdapter {
       status: "disconnected",
     });
 
-    this.server.close();
-    this.updateServer.close();
+    if(this.server) {
+      this.server.close();
+    }
+    if(this.updateServer) {
+      this.updateServer.close();
+    }
   }
 
   sendError({ error }) {

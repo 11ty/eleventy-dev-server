@@ -432,7 +432,7 @@ class EleventyServeAdapter {
     });
   }
 
-  async reload(event) {
+  reload(event) {
     let { subtype, files, build } = event;
     if (build.templates) {
       build.templates = build.templates

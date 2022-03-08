@@ -1,14 +1,37 @@
 {
   "name": "@11ty/eleventy-dev-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "A minimal, modern, generic, hot-reloading local web server to help web developers.",
   "main": "server.js",
   "scripts": {
-    "test": "npx ava"
+    "test": "npx ava --verbose"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "engines": {
+    "node": ">=12"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/11ty"
+  },
+  "keywords": [
+    "eleventy",
+    "server"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": {
+    "name": "Zach Leatherman",
+    "email": "zachleatherman@gmail.com",
+    "url": "https://zachleat.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/11ty/eleventy-dev-server.git"
+  },
+  "bugs": "https://github.com/11ty/eleventy-dev-server/issues",
+  "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
     "@11ty/eleventy-utils": "^1.0.0",
     "debug": "^4.3.3",

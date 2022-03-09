@@ -157,13 +157,13 @@ class EleventyDevServer {
     };
   }
 
-  _getFileContents(localpath, useCache = true) {
+  _getFileContents(localpath, rootDir, useCache = true) {
     if(this.fileCache[localpath]) {
       return this.fileCache[localpath];
     }
 
     let filepath = TemplatePath.absolutePath(
-      __dirname,
+      rootDir || __dirname,
       localpath
     );
     let contents = fs.readFileSync(filepath, {
@@ -237,7 +237,7 @@ class EleventyDevServer {
       return res.end(this._getFileContents("./client/reload-client.js"));
     } else if(req.url === `/${this.options.folder}/morphdom.js`) {
       res.setHeader("Content-Type", mime.getType("js"));
-      return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js"));
+      return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
     }
 
     let match = this.mapUrlToFilePath(req.url);

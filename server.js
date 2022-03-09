@@ -166,6 +166,15 @@ class EleventyDevServer {
       rootDir || __dirname,
       localpath
     );
+
+    // fallback for file:../ installations
+    if(rootDir && !fs.existsSync(filepath)) {
+      filepath = TemplatePath.absolutePath(
+        __dirname,
+        localpath
+      );
+    }
+
     let contents = fs.readFileSync(filepath, {
       encoding: "utf8",
     });

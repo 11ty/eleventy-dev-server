@@ -7,7 +7,7 @@ const ssri = require("ssri");
 const devip = require("dev-ip");
 const { TemplatePath } = require("@11ty/eleventy-utils");
 
-const debug = require("debug")("EleventyServeAdapter");
+const debug = require("debug")("EleventyDevServer");
 
 const wrapResponse = require("./server/wrapResponse.js");
 
@@ -29,12 +29,13 @@ const DEFAULT_OPTIONS = {
   }
 }
 
-class EleventyServeAdapter {
+class EleventyDevServer {
   static getServer(...args) {
     let [name] = args;
-
+    
+    // TODO what if previously cached server has new/different dir or options
     if (!serverCache[name]) {
-      serverCache[name] = new EleventyServeAdapter(...args);
+      serverCache[name] = new EleventyDevServer(...args);
     }
 
     return serverCache[name];
@@ -44,7 +45,6 @@ class EleventyServeAdapter {
     this.name = name;
     this.options = Object.assign({}, DEFAULT_OPTIONS, options);
     this.fileCache = {};
-
     // Directory to serve
     if(!dir) {
       throw new Error("Missing `dir` to serve.");
@@ -288,23 +288,32 @@ class EleventyServeAdapter {
           integrityHash
         });
       }
+
       return content;
     });
 
     let middlewares = this.options.middleware || [];
-    if(middlewares.length) {
-      let nexts = [];
-      // Iterate over those middlewares
-      middlewares.forEach((ware, index) => {
-        let nextWare = middlewares[index + 1] || this.requestMiddleware.bind(this, req, res);
-        nexts.push(ware.bind(null, req, res, nextWare));
-      });
-      for(let ware of nexts) {
-        await ware();
+    middlewares = middlewares.slice();
+    middlewares.push(this.requestMiddleware);
+    middlewares.reverse();
+
+    let bound = [];
+    let next;
+    for(let ware of middlewares) {
+      let fn;
+      if(next) {
+        fn = ware.bind(this, req, res, next);
+      } else {
+        fn = ware.bind(this, req, res);
       }
-    } else {
-      this.requestMiddleware(req, res)
+      bound.push(fn);
+      next = fn;
     }
+
+    bound.reverse();
+
+    let [first] = bound;
+    await first();
   }
 
   get server() {
@@ -377,6 +386,15 @@ class EleventyServeAdapter {
     this.server.listen({
       port,
     });
+  }
+
+  async getPort() {
+    return new Promise(resolve => {
+      this.server.on("listening", (e) => {
+        let { port } = this._server.address();
+        resolve(port);
+      });
+    })
   }
 
   serve(port) {
@@ -461,4 +479,4 @@ class EleventyServeAdapter {
   }
 }
 
-module.exports = EleventyServeAdapter;
+module.exports = EleventyDevServer;

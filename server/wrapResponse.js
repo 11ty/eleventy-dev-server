@@ -92,8 +92,6 @@ function wrapResponse(resp, transformHtml) {
       }
       return this._wrappedOriginalEnd(callback);
     }
-
-    return this;
   }
 
   return resp;

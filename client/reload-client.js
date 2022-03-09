@@ -24,6 +24,27 @@ class Util {
   static capitalize(word) {
     return word.substr(0, 1).toUpperCase() + word.substr(1);
   }
+
+  static matchRootAttributes(htmlContent) {
+    // Workaround for morphdom bug with attributes on <html> https://github.com/11ty/eleventy-dev-server/issues/6
+    // Note also `childrenOnly: true` above
+    const parser = new DOMParser();
+    let parsed = parser.parseFromString(htmlContent, "text/html");
+    let parsedDoc = parsed.documentElement;
+    let newAttrs = parsedDoc.getAttributeNames();
+
+    let docEl = document.documentElement;
+    // Remove old
+    let removedAttrs = docEl.getAttributeNames().filter(name => !newAttrs.includes(name));
+    for(let attr of removedAttrs) {
+      docEl.removeAttribute(attr);
+    }
+
+    // Add new
+    for(let attr of newAttrs) {
+      docEl.setAttribute(attr, parsedDoc.getAttribute(attr));
+    }
+  }
 }
 
 class EleventyReload {
@@ -57,7 +78,9 @@ class EleventyReload {
             if ((files || []).includes(template.inputPath)) {
               // Notable limitation: this won’t re-run script elements
               morphed = true;
+
               morphdom(document.documentElement, template.content, {
+                childrenOnly: true,
                 // Speed-up trick from morphdom docs
                 onBeforeElUpdated: function (fromEl, toEl) {
                   // https://dom.spec.whatwg.org/#concept-node-equals
@@ -67,7 +90,9 @@ class EleventyReload {
                   return true;
                 },
               });
-  
+
+              Util.matchRootAttributes(template.content);
+
               Util.log(`HTML delta applied without page reload.`);
             }
             break;

@@ -16,11 +16,12 @@ A minimal, modern, generic, hot-reloading local web server to help web developer
 
 ## Installation
 
-This is bundled with @11ty/eleventy starting with Eleventy v2.0.0.
+You do not need to install this separately—it is bundled with `@11ty/eleventy` starting with Eleventy v2.0.0.
 
-That said, you can use it standalone! A CLI is also rumored, if you pester the author about it enough.
+That said, you can use it standalone! A [CLI is also rumored](https://github.com/11ty/eleventy-dev-server/issues/2), if you pester the author about it enough.
 
 ```
+# Unnecessary if you’re using this with Eleventy
 npm install @11ty/eleventy-dev-server
 ```
 

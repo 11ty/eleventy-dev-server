@@ -94,3 +94,13 @@ test("Url mappings for missing resource", t => {
   server.close();
 });
 
+test("Url mapping for a filename with a space in it", t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/");
+
+  t.deepEqual(server.mapUrlToFilePath("/route space.html"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route space.html",)
+  });
+
+  server.close();
+});

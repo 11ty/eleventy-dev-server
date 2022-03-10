@@ -35,7 +35,7 @@ const DEFAULT_OPTIONS = {
 class EleventyDevServer {
   static getServer(...args) {
     let [name] = args;
-    
+
     // TODO what if previously cached server has new/different dir or options
     if (!serverCache[name]) {
       serverCache[name] = new EleventyDevServer(...args);
@@ -68,6 +68,8 @@ class EleventyDevServer {
     } else {
       computedPath = path.join(this.dir, filepath, filename);
     }
+
+    computedPath = decodeURIComponent(computedPath);
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
     let absComputedPath = TemplatePath.absolutePath(computedPath);

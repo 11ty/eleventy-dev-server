@@ -4,7 +4,7 @@
 
 A minimal, modern, generic, hot-reloading local web server to help web developers.
 
-## ➡ [Documentation](https://www.11ty.dev/docs/)
+## ➡ [Documentation](https://www.11ty.dev/docs/watch-serve/#eleventy-dev-server)
 
 - Please star [Eleventy on GitHub](https://github.com/11ty/eleventy/)!
 - Follow us on Twitter [@eleven_ty](https://twitter.com/eleven_ty)

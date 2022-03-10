@@ -1,3 +1,4 @@
+const pkg = require("./package.json");
 const path = require("path");
 const fs = require("fs");
 const finalhandler = require("finalhandler");
@@ -19,6 +20,8 @@ const DEFAULT_OPTIONS = {
   folder: ".11ty",      // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
+  domdiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
+  showVersion: false,   // Whether or not to show the server version on the command line.
 
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
 
@@ -385,7 +388,7 @@ class EleventyDevServer {
         hostsStr = hosts.join(" ") + " ";
       }
 
-      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix} `);
+      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}${this.options.showVersion ? ` (v${pkg.version})` : ""}`);
     });
 
     return this._server;
@@ -474,6 +477,10 @@ class EleventyDevServer {
     if (build.templates) {
       build.templates = build.templates
         .filter(entry => {
+          if(!this.options.domdiff) {
+            // Don’t include any files if the dom diffing option is disabled
+            return false;
+          }
           // Filter to only include watched templates that were updated
           return (files || []).includes(entry.inputPath);
         });

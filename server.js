@@ -22,6 +22,7 @@ const DEFAULT_OPTIONS = {
   https: {},            // `key` and `cert`, required for http/2 and https
   domdiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
   showVersion: false,   // Whether or not to show the server version on the command line.
+  encoding: "utf-8",    // Default file encoding
 
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
 
@@ -181,7 +182,7 @@ class EleventyDevServer {
     }
 
     let contents = fs.readFileSync(filepath, {
-      encoding: "utf8",
+      encoding: this.options.encoding,
     });
     if(useCache) {
       this.fileCache[localpath] = contents;
@@ -263,7 +264,7 @@ class EleventyDevServer {
         let contents = fs.readFileSync(match.filepath);
         let mimeType = mime.getType(match.filepath);
         if (mimeType === "text/html") {
-          res.setHeader("Content-Type", mimeType);
+          res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
           // the string is important here, wrapResponse expects strings internally for HTML content (for now)
           return res.end(contents.toString());
         }

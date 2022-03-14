@@ -226,6 +226,23 @@ class EleventyDevServer {
     return (content || "") + script;
   }
 
+  renderFile(filepath, res) {
+    let contents = fs.readFileSync(filepath);
+    let mimeType = mime.getType(filepath);
+
+    if (mimeType === "text/html") {
+      res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
+      // the string is important here, wrapResponse expects strings internally for HTML content (for now)
+      return res.end(contents.toString());
+    }
+
+    if (mimeType) {
+      res.setHeader("Content-Type", mimeType);
+    }
+
+    return res.end(contents);
+  }
+
   requestMiddleware(req, res) {
     // Known issue with `finalhandler` and HTTP/2:
     // UnsupportedWarning: Status message is not supported by HTTP/2 (RFC7540 8.1.2.4)
@@ -261,27 +278,22 @@ class EleventyDevServer {
 
     if (match) {
       if (match.statusCode === 200 && match.filepath) {
-        let contents = fs.readFileSync(match.filepath);
-        let mimeType = mime.getType(match.filepath);
-        if (mimeType === "text/html") {
-          res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
-          // the string is important here, wrapResponse expects strings internally for HTML content (for now)
-          return res.end(contents.toString());
-        }
-
-        if (mimeType) {
-          res.setHeader("Content-Type", mimeType);
-        }
-        return res.end(contents);
+        return this.renderFile(match.filepath, res);
       }
 
-      // TODO add support for 404 pages (in different Jamstack server configurations)
+      let raw404Path = this.getOutputDirFilePath("404.html");
+      if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
+        res.statusCode = match.statusCode;
+        return this.renderFile(raw404Path, res);
+      }
+
+      // Redirects
       if (match.url) {
-        res.writeHead(match.statusCode, {
-          Location: match.url,
-        });
+        res.statusCode = match.statusCode;
+        res.setHeader("Location", match.url);
         return res.end();
       }
+
     }
 
     next();

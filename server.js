@@ -265,11 +265,15 @@ class EleventyDevServer {
     });
 
     if(req.url === `/${this.options.folder}/reload-client.js`) {
-      res.setHeader("Content-Type", mime.getType("js"));
-      return res.end(this._getFileContents("./client/reload-client.js"));
+      if(this.options.enabled) {
+        res.setHeader("Content-Type", mime.getType("js"));
+        return res.end(this._getFileContents("./client/reload-client.js"));
+      }
     } else if(req.url === `/${this.options.folder}/morphdom.js`) {
-      res.setHeader("Content-Type", mime.getType("js"));
-      return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
+      if(this.options.domdiff) {
+        res.setHeader("Content-Type", mime.getType("js"));
+        return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
+      }
     }
 
     let match = this.mapUrlToFilePath(req.url);

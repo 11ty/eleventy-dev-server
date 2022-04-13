@@ -76,7 +76,7 @@ class EleventyReload {
               if ((files || []).includes(template.inputPath)) {
                 // Notable limitation: this won’t re-run script elements or JavaScript page lifecycle events (load/DOMContentLoaded)
                 morphed = true;
-  
+
                 morphdom(document.documentElement, template.content, {
                   childrenOnly: true,
                   // Speed-up trick from morphdom docs
@@ -85,6 +85,30 @@ class EleventyReload {
                     if (fromEl.isEqualNode(toEl)) {
                       return false;
                     }
+
+                    // Issue #18 https://github.com/11ty/eleventy-dev-server/issues/18
+                    // Don’t update a <link> if the _11ty searchParam is the only thing that’s different
+                    if(fromEl.tagName === "LINK") {
+                      let oldWithoutHref = fromEl.cloneNode();
+                      let newWithoutHref = toEl.cloneNode();
+
+                      oldWithoutHref.removeAttribute("href");
+                      newWithoutHref.removeAttribute("href");
+
+                      if(oldWithoutHref.isEqualNode(newWithoutHref)) {
+                        let oldUrl = new URL(fromEl.href);
+                        let newUrl = new URL(toEl.href);
+                        let isErasing = oldUrl.searchParams.has("_11ty") && !newUrl.searchParams.has("_11ty");
+
+                        oldUrl.searchParams.set("_11ty", "");
+                        newUrl.searchParams.set("_11ty", "");
+
+                        if(isErasing && oldUrl.toString() === newUrl.toString()) {
+                          return false;
+                        }
+                      }
+                    }
+
                     return true;
                   },
                 });

@@ -168,17 +168,21 @@ class EleventyDevServer {
       return this.fileCache[localpath];
     }
 
-    let filepath = TemplatePath.absolutePath(
-      rootDir || __dirname,
-      localpath
-    );
+    let filepath;
+    let searchLocations = [];
 
-    // fallback for file:../ installations
-    if(rootDir && !fs.existsSync(filepath)) {
-      filepath = TemplatePath.absolutePath(
-        __dirname,
-        localpath
-      );
+    if(rootDir) {
+      searchLocations.push(TemplatePath.absolutePath(rootDir, localpath));
+    }
+    // fallbacks for file:../ installations
+    searchLocations.push(TemplatePath.absolutePath(__dirname, localpath));
+    searchLocations.push(TemplatePath.absolutePath(__dirname, "../../../", localpath));
+
+    for(let loc of searchLocations) {
+      if(fs.existsSync(loc)) {
+        filepath = loc;
+        break;
+      }
     }
 
     let contents = fs.readFileSync(filepath, {

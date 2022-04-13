@@ -45,6 +45,41 @@ class Util {
       docEl.setAttribute(attr, parsedDoc.getAttribute(attr));
     }
   }
+
+  static isEleventyLinkNodeMatch(from, to) {
+    // Issue #18 https://github.com/11ty/eleventy-dev-server/issues/18
+    // Don’t update a <link> if the _11ty searchParam is the only thing that’s different
+    if(from.tagName !== "LINK" || to.tagName !== "LINK") {
+      return false;
+    }
+
+    let oldWithoutHref = from.cloneNode();
+    let newWithoutHref = to.cloneNode();
+    
+    oldWithoutHref.removeAttribute("href");
+    newWithoutHref.removeAttribute("href");
+    
+    // if all other attributes besides href match
+    if(!oldWithoutHref.isEqualNode(newWithoutHref)) {
+      return false;
+    }
+
+    let oldUrl = new URL(from.href);
+    let newUrl = new URL(to.href);
+
+    // morphdom wants to force href="style.css?_11ty" => href="style.css"
+    let isErasing = oldUrl.searchParams.has("_11ty") && !newUrl.searchParams.has("_11ty");
+    if(!isErasing) {
+      // not a match if _11ty has a new value (not being erased)
+      return false;
+    }
+
+    oldUrl.searchParams.set("_11ty", "");
+    newUrl.searchParams.set("_11ty", "");
+
+    // is a match if erasing and the rest of the href matches too
+    return oldUrl.toString() === newUrl.toString();
+  }
 }
 
 class EleventyReload {
@@ -86,27 +121,8 @@ class EleventyReload {
                       return false;
                     }
 
-                    // Issue #18 https://github.com/11ty/eleventy-dev-server/issues/18
-                    // Don’t update a <link> if the _11ty searchParam is the only thing that’s different
-                    if(fromEl.tagName === "LINK") {
-                      let oldWithoutHref = fromEl.cloneNode();
-                      let newWithoutHref = toEl.cloneNode();
-
-                      oldWithoutHref.removeAttribute("href");
-                      newWithoutHref.removeAttribute("href");
-
-                      if(oldWithoutHref.isEqualNode(newWithoutHref)) {
-                        let oldUrl = new URL(fromEl.href);
-                        let newUrl = new URL(toEl.href);
-                        let isErasing = oldUrl.searchParams.has("_11ty") && !newUrl.searchParams.has("_11ty");
-
-                        oldUrl.searchParams.set("_11ty", "");
-                        newUrl.searchParams.set("_11ty", "");
-
-                        if(isErasing && oldUrl.toString() === newUrl.toString()) {
-                          return false;
-                        }
-                      }
+                    if(Util.isEleventyLinkNodeMatch(fromEl, toEl)) {
+                      return false;
                     }
 
                     return true;

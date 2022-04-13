@@ -243,6 +243,22 @@ class EleventyDevServer {
     return res.end(contents);
   }
 
+  eleventyFolderMiddleware(req, res, next) {
+    if(req.url === `/${this.options.folder}/reload-client.js`) {
+      if(this.options.enabled) {
+        res.setHeader("Content-Type", mime.getType("js"));
+        return res.end(this._getFileContents("./client/reload-client.js"));
+      }
+    } else if(req.url === `/${this.options.folder}/morphdom.js`) {
+      if(this.options.domdiff) {
+        res.setHeader("Content-Type", mime.getType("js"));
+        return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
+      }
+    }
+
+    next();
+  }
+
   requestMiddleware(req, res) {
     // Known issue with `finalhandler` and HTTP/2:
     // UnsupportedWarning: Status message is not supported by HTTP/2 (RFC7540 8.1.2.4)
@@ -263,18 +279,6 @@ class EleventyDevServer {
         }
       },
     });
-
-    if(req.url === `/${this.options.folder}/reload-client.js`) {
-      if(this.options.enabled) {
-        res.setHeader("Content-Type", mime.getType("js"));
-        return res.end(this._getFileContents("./client/reload-client.js"));
-      }
-    } else if(req.url === `/${this.options.folder}/morphdom.js`) {
-      if(this.options.domdiff) {
-        res.setHeader("Content-Type", mime.getType("js"));
-        return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
-      }
-    }
 
     let match = this.mapUrlToFilePath(req.url);
     // console.log( req.url, match );
@@ -327,6 +331,8 @@ class EleventyDevServer {
     middlewares = middlewares.slice();
     middlewares.push(this.requestMiddleware);
     middlewares.reverse();
+
+    middlewares.push(this.eleventyFolderMiddleware);
 
     let bound = [];
     let next;

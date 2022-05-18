@@ -18,6 +18,33 @@ function wrapResponse(resp, transformHtml) {
 
   resp._wrappedHeaders = [];
   resp._wrappedTransformHtml = transformHtml;
+  resp._hasEnded = false;
+  resp._shouldForceEnd = false;
+
+  // Compatibility with web standards Response()
+  Object.defineProperty(resp, "body", {
+    // Returns write cache
+    get: function() {
+      if(typeof this._writeCache === "string") {
+        return this._writeCache;
+      }
+    },
+    // Usage:
+    // res.body = ""; // overwrite existing content
+    // res.body += ""; // append to existing content, can also res.write("") to append
+    set: function(data) {
+      if(typeof data === "string") {
+        this._writeCache = data;
+      }
+    }
+  });
+
+  // Compatibility with web standards Response()
+  Object.defineProperty(resp, "bodyUsed", {
+    get: function() {
+      return this._hasEnded;
+    }
+  })
 
   // Original signature writeHead(statusCode[, statusMessage][, headers])
   resp.writeHead = function(statusCode, ...args) {
@@ -53,6 +80,8 @@ function wrapResponse(resp, transformHtml) {
 
   // data can be a String or Buffer
   resp.end = function(data, encoding, callback) {
+    resp._hasEnded = true;
+
     if(typeof this._writeCache === "string" || typeof data === "string") {
       // Strings
       if(!this._writeCache) {

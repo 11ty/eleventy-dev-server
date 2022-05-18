@@ -236,6 +236,7 @@ class EleventyDevServer {
 
     if (mimeType === "text/html") {
       res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
+
       // the string is important here, wrapResponse expects strings internally for HTML content (for now)
       return res.end(contents.toString());
     }
@@ -247,7 +248,7 @@ class EleventyDevServer {
     return res.end(contents);
   }
 
-  eleventyFolderMiddleware(req, res, next) {
+  eleventyDevServerMiddleware(req, res, next) {
     if(req.url === `/${this.options.folder}/reload-client.js`) {
       if(this.options.enabled) {
         res.setHeader("Content-Type", mime.getType("js"));
@@ -263,12 +264,13 @@ class EleventyDevServer {
     next();
   }
 
-  requestMiddleware(req, res) {
+  // This runs at the end of the middleware chain
+  eleventyProjectMiddleware(req, res) {
     // Known issue with `finalhandler` and HTTP/2:
     // UnsupportedWarning: Status message is not supported by HTTP/2 (RFC7540 8.1.2.4)
     // https://github.com/pillarjs/finalhandler/pull/34
 
-    let next = finalhandler(req, res, {
+    let lastNext = finalhandler(req, res, {
       onerror: (e) => {
         if (e.statusCode === 404) {
           let localPath = TemplatePath.stripLeadingSubPath(
@@ -285,12 +287,18 @@ class EleventyDevServer {
     });
 
     let match = this.mapUrlToFilePath(req.url);
-    // console.log( req.url, match );
     debug( req.url, match );
 
     if (match) {
       if (match.statusCode === 200 && match.filepath) {
         return this.renderFile(match.filepath, res);
+      }
+
+      // Redirects, usually for trailing slash to .html stuff
+      if (match.url) {
+        res.statusCode = match.statusCode;
+        res.setHeader("Location", match.url);
+        return res.end();
       }
 
       let raw404Path = this.getOutputDirFilePath("404.html");
@@ -299,16 +307,20 @@ class EleventyDevServer {
         return this.renderFile(raw404Path, res);
       }
 
-      // Redirects
-      if (match.url) {
-        res.statusCode = match.statusCode;
-        res.setHeader("Location", match.url);
-        return res.end();
-      }
-
     }
 
-    next();
+    if(res.body && !res.bodyUsed) {
+      if(res._shouldForceEnd) {
+        res.end();
+      } else {
+        let err = new Error("A response was never written to the stream. Are you missing a server middleware with `res.end()`?");
+        err.statusCode = 500;
+        lastNext(err);
+        return;
+      }
+    }
+
+    lastNext();
   }
 
   async onRequestHandler (req, res) {
@@ -333,13 +345,19 @@ class EleventyDevServer {
 
     let middlewares = this.options.middleware || [];
     middlewares = middlewares.slice();
-    middlewares.push(this.requestMiddleware);
+
+    // TODO because this runs at the very end of the middleware chain,
+    // if we move the static stuff up in the order we could use middleware to modify
+    // the static content in middleware!
+    middlewares.push(this.eleventyProjectMiddleware);
     middlewares.reverse();
 
-    middlewares.push(this.eleventyFolderMiddleware);
+    // Runs very first in the middleware chain
+    middlewares.push(this.eleventyDevServerMiddleware);
 
     let bound = [];
     let next;
+
     for(let ware of middlewares) {
       let fn;
       if(next) {

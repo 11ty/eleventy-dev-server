@@ -42,7 +42,7 @@ async function makeRequestTo(t, server, path) {
   })
 }
 
-test("Test standard request", async t => {
+test("Standard request", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
   server.serve(8080);
 
@@ -53,7 +53,7 @@ test("Test standard request", async t => {
   server.close();
 });
 
-test("Test one sync middleware", async t => {
+test("One sync middleware", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     middleware: [
       function(req, res, next) {
@@ -71,7 +71,7 @@ test("Test one sync middleware", async t => {
   server.close();
 });
 
-test("Test two sync middleware", async t => {
+test("Two sync middleware", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     middleware: [
       function(req, res, next) {
@@ -91,7 +91,7 @@ test("Test two sync middleware", async t => {
   server.close();
 });
 
-test("Test one async middleware", async t => {
+test("One async middleware", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     middleware: [
       async function(req, res, next) {
@@ -108,7 +108,7 @@ test("Test one async middleware", async t => {
   server.close();
 });
 
-test("Test two async middleware", async t => {
+test("Two async middleware", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     middleware: [
       async function(req, res, next) {
@@ -128,7 +128,7 @@ test("Test two async middleware", async t => {
   server.close();
 });
 
-test("Test async middleware that writes", async t => {
+test("Async middleware that writes", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     // enabled: false,
     middleware: [
@@ -156,7 +156,7 @@ test("Test async middleware that writes", async t => {
   server.close();
 });
 
-test("Test second async middleware that writes", async t => {
+test("Second async middleware that writes", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     // enabled: false,
     middleware: [
@@ -189,6 +189,59 @@ test("Test second async middleware that writes", async t => {
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
   t.true(data.startsWith("Injected"));
+
+  server.close();
+});
+
+
+test("Second middleware that consumes first middleware response body, issue #29", async t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
+    // enabled: false,
+    middleware: [
+      async function(req, res, next) {
+        res.writeHead(200, {"Content-Type": "text/html"});
+        res.write("First ");
+
+        next()
+      },
+      async function(req, res, next) {
+        res.body += "Second ";
+        // No need for `next()` when you do `end()`
+        res.end();
+      },
+    ],
+  }));
+  server.serve(8080);
+
+  let data = await makeRequestTo(t, server, "/sample");
+  t.true(data.includes("<script "));
+  t.true(data.startsWith("First Second "));
+
+  server.close();
+});
+
+test("Two middlewares, end() in the first, skip the second", async t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
+    // enabled: false,
+    middleware: [
+      async function(req, res, next) {
+        res.writeHead(200, {"Content-Type": "text/html"});
+        res.write("First ");
+        res.end();
+      },
+      async function(req, res, next) {
+        res.body += "Second ";
+
+        next();
+      },
+    ],
+  }));
+  server.serve(8080);
+
+  let data = await makeRequestTo(t, server, "/sample");
+  t.true(data.includes("<script "));
+  t.true(data.startsWith("First "));
+  t.true(!data.startsWith("First Second "));
 
   server.close();
 });

@@ -22,16 +22,18 @@ You _do not need to install this_ separately—it is bundled with `@11ty/elevent
 
 As of `1.0.0-canary.10` we now include a CLI for the Eleventy Dev Server.
 
-```
-# ⚠️⚠️ This is for **standalone** use only.
-# Installation is unnecessary if you’re using this with Eleventy.
+This is for **standalone** use only. Installation is unnecessary if you’re using this with Eleventy.
 
+```sh
 npm install -g @11ty/eleventy-dev-server
 
 # Alternatively, install locally into your project
-# npm install @11ty/eleventy-dev-server
+npm install @11ty/eleventy-dev-server
+```
 
+### CLI Usage
 
+```sh
 # Serve the current directory
 npx @11ty/eleventy-dev-server
 

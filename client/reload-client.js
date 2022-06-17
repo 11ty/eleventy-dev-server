@@ -156,9 +156,17 @@ class EleventyReload {
     Util.log("Trying to connect…");
 
     let { protocol, host } = new URL(document.location.href);
+
+    // works with http (ws) and https (wss)
     let websocketProtocol = protocol.replace("http", "ws");
+
     // TODO add a path here so that it doesn’t collide with any app websockets
     let socket = new WebSocket(`${websocketProtocol}//${host}`);
+
+    // Related to #26
+    // socket.addEventListener("error", (e) => {
+    //   Util.error(`Error connecting:`, e);
+    // });
 
     // TODO add special handling for disconnect or document focus to retry
     socket.addEventListener("message", async function (event) {
@@ -175,7 +183,7 @@ class EleventyReload {
           // Log Eleventy build errors
           // Extra parsing for Node Error objects
           let e = JSON.parse(data.error);
-          Util.error(`Build error:  ${e.message}`, e);
+          Util.error(`Build error: ${e.message}`, e);
         } else if (type === "eleventy.status") {
           // Full page reload on initial reconnect
           if (data.status === "connected" && options.mode === "reconnect") {
@@ -187,7 +195,7 @@ class EleventyReload {
           Util.log("Unknown event type", data);
         }
       } catch (e) {
-        Util.log("Error", event.data, e.message);
+        Util.error(`Error parsing ${event.data}: ${e.message}`, e);
       }
     });
 

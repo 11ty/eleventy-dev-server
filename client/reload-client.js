@@ -1,7 +1,7 @@
 class Util {
   static pad(num, digits = 2) {
     let zeroes = new Array(digits + 1).join(0);
-    return `${zeroes}${num}`.substr(-1 * digits);
+    return `${zeroes}${num}`.slice(-1 * digits);
   }
 
   static log(message) {

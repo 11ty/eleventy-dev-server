@@ -150,7 +150,7 @@ class EleventyDevServer {
       };
     }
 
-    // /resource/ => reidrect to /resource
+    // /resource/ => redirect to /resource
     if (htmlExists && url.endsWith("/")) {
       return {
         statusCode: 301,
@@ -530,7 +530,7 @@ class EleventyDevServer {
 
   reload(event) {
     let { subtype, files, build } = event;
-    if (build.templates) {
+    if (build?.templates) {
       build.templates = build.templates
         .filter(entry => {
           if(!this.options.domdiff) {

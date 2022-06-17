@@ -16,13 +16,33 @@ A minimal, modern, generic, hot-reloading local web server to help web developer
 
 ## Installation
 
-You do not need to install this separately—it is bundled with `@11ty/eleventy` starting with Eleventy v2.0.0.
+You _do not need to install this_ separately—it is bundled with `@11ty/eleventy` starting with Eleventy v2.0.0.
 
-That said, you can use it standalone! A [CLI is also rumored](https://github.com/11ty/eleventy-dev-server/issues/2), if you pester the author about it enough.
+## CLI
+
+As of `1.0.0-canary.10` we now include a CLI for the Eleventy Dev Server.
 
 ```
-# Unnecessary if you’re using this with Eleventy
-npm install @11ty/eleventy-dev-server
+# ⚠️⚠️ This is for **standalone** use only.
+# Installation is unnecessary if you’re using this with Eleventy.
+
+npm install -g @11ty/eleventy-dev-server
+
+# Alternatively, install locally into your project
+# npm install @11ty/eleventy-dev-server
+
+
+# Serve the current directory
+npx @11ty/eleventy-dev-server
+
+# Serve a different subdirectory
+npx @11ty/eleventy-dev-server --input=_site
+
+# Disable the `domdiff` feature
+npx @11ty/eleventy-dev-server --domdiff=false
+
+# Full command list in the Help
+npx @11ty/eleventy-dev-server --help
 ```
 
 ## Tests

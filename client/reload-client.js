@@ -105,6 +105,7 @@ class EleventyReload {
           // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
           const { default: morphdom } = await import(`./morphdom.js`);
 
+          // { url, inputPath, content }
           for (let template of build.templates || []) {
             if (template.url === document.location.pathname) {
               // Importantly, if this does not match but is still relevant (layout/include/etc), a full reload happens below. This could be improved.

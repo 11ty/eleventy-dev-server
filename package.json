@@ -4,7 +4,8 @@
   "description": "A minimal, modern, generic, hot-reloading local web server to help web developers.",
   "main": "server.js",
   "scripts": {
-    "test": "npx ava --verbose"
+    "test": "npx ava --verbose",
+    "sample": "node cmd.js --input=test/stubs"
   },
   "license": "MIT",
   "engines": {
@@ -14,9 +15,13 @@
     "type": "opencollective",
     "url": "https://opencollective.com/11ty"
   },
+  "bin": {
+    "eleventy-dev-server": "./cmd.js"
+  },
   "keywords": [
     "eleventy",
-    "server"
+    "server",
+    "cli"
   ],
   "publishConfig": {
     "access": "public"
@@ -34,11 +39,14 @@
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
     "@11ty/eleventy-utils": "^1.0.0",
+    "chokidar": "^3.5.3",
     "debug": "^4.3.3",
     "dev-ip": "^1.0.1",
     "finalhandler": "^1.1.2",
     "mime": "^3.0.0",
+    "minimist": "^1.2.6",
     "morphdom": "^2.6.1",
+    "please-upgrade-node": "^3.2.0",
     "ssri": "^8.0.1",
     "ws": "^8.5.0"
   },

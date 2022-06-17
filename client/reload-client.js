@@ -80,6 +80,19 @@ class Util {
     // is a match if erasing and the rest of the href matches too
     return oldUrl.toString() === newUrl.toString();
   }
+
+  // https://github.com/patrick-steele-idem/morphdom/issues/178#issuecomment-652562769
+  static runScript(source, target) {
+    let script = document.createElement('script');
+
+    //copy over the attributes
+    for(let attr of [...source.attributes]) {
+      script.setAttribute(attr.nodeName ,attr.nodeValue);
+    }
+
+    script.innerHTML = source.innerHTML;
+    (target || source).replaceWith(script);
+  }
 }
 
 class EleventyReload {
@@ -115,8 +128,13 @@ class EleventyReload {
 
                 morphdom(document.documentElement, template.content, {
                   childrenOnly: true,
-                  // Speed-up trick from morphdom docs
                   onBeforeElUpdated: function (fromEl, toEl) {
+                    if (fromEl.nodeName === "SCRIPT" && toEl.nodeName === "SCRIPT") {
+                      Util.runScript(toEl, fromEl);
+                      return false;
+                    }
+
+                    // Speed-up trick from morphdom docs
                     // https://dom.spec.whatwg.org/#concept-node-equals
                     if (fromEl.isEqualNode(toEl)) {
                       return false;
@@ -127,6 +145,11 @@ class EleventyReload {
                     }
 
                     return true;
+                  },
+                  onNodeAdded: function (node) {
+                    if (node.nodeName === 'SCRIPT') {
+                      Util.runScript(node);
+                    }
                   },
                 });
 

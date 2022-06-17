@@ -96,7 +96,7 @@ Arguments:
   // reverse of server.js->mapUrlToFilePath
   // /resource/ <= /resource/index.html
   // /resource <= resource.html
-  getUrlFromFilePath(path) {
+  getUrlsFromFilePath(path) {
     if(this.options.input) {
       if(this.options.input === ".") {
         path = `/${path}`
@@ -105,23 +105,28 @@ Arguments:
       }
     }
 
+    let urls = [];
+    urls.push(path);
+
     if(path.endsWith("/index.html")) {
-      return path.slice(0, -1 * "index.html".length);
-    }
-    if(path.endsWith(".html")) {
-      return path.slice(0, -1 * "html".length);
+      urls.push(path.slice(0, -1 * "index.html".length));
+    } else if(path.endsWith(".html")) {
+      urls.push(path.slice(0, -1 * ".html".length));
     }
 
-    return path;
+    return urls;
   }
 
   // [{ url, inputPath, content }]
   getBuildTemplatesFromFilePath(path) {
-    return [{
-      url: this.getUrlFromFilePath(path),
+    let urls = this.getUrlsFromFilePath(path);
+    let obj = {
       inputPath: path,
       content: fs.readFileSync(path, "utf8"),
-    }];
+    }
+    return urls.map(url => {
+      return Object.assign({ url }, obj);
+    });
   }
 
   reload(path) {

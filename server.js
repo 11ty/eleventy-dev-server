@@ -206,6 +206,14 @@ class EleventyDevServer {
     // This isn’t super necessary because it’s a local file, but it’s included anyway
     let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.folder}/reload-client.js">`}</script>`;
 
+    // If the HTML document contains an importmap, insert the module script after the importmap element
+    let importMapRegEx = /<script type=\\?importmap\\?[^>]*>(\n|.)*?<\/script>/gmi;
+    let importMapMatch = content.match(importMapRegEx)?.[0];
+
+    if (importMapMatch) {
+      return content.replace(importMapMatch, `${importMapMatch}${script}`);
+    }
+
     // <title> is the only *required* element in an HTML document
     if (content.includes("</title>")) {
       return content.replace("</title>", `</title>${script}`);

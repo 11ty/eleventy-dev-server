@@ -206,6 +206,10 @@ class EleventyDevServer {
     // This isn’t super necessary because it’s a local file, but it’s included anyway
     let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.folder}/reload-client.js">`}</script>`;
 
+    if (content.includes("</head>")) {
+      return content.replace("</head>", `${script}</head>`);
+    }
+
     // If the HTML document contains an importmap, insert the module script after the importmap element
     let importMapRegEx = /<script type=\\?importmap\\?[^>]*>(\n|.)*?<\/script>/gmi;
     let importMapMatch = content.match(importMapRegEx)?.[0];
@@ -221,9 +225,6 @@ class EleventyDevServer {
 
     // If you’ve reached this section, your HTML is invalid!
     // We want to be super forgiving here, because folks might be in-progress editing the document!
-    if (content.includes("</head>")) {
-      return content.replace("</head>", `${script}</head>`);
-    }
     if (content.includes("</body>")) {
       return content.replace("</body>", `${script}</body>`);
     }

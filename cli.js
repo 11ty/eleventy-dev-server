@@ -2,7 +2,7 @@ const chokidar = require("chokidar");
 const fs = require("fs");
 
 const pkg = require("./package.json");
-const EleventyDevServer = require("./server");
+const EleventyDevServer = require("./server.js");
 
 const Logger = {
   info: function(...args) {

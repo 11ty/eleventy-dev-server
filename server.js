@@ -57,6 +57,25 @@ class EleventyDevServer {
     this.logger = this.options.logger;
   }
 
+  // Allowed list of files that can be served from outside `dir`
+  setAliases(aliases) {
+    this.passthroughAliases = aliases;
+  }
+
+  matchPassthroughAlias(url) {
+    for(let targetUrl in this.passthroughAliases) {
+      if(!targetUrl) {
+        continue;
+      }
+
+      let file = this.passthroughAliases[targetUrl];
+      if(url.startsWith(targetUrl)) {
+        return file + url.slice(targetUrl.length);
+      }
+    }
+    return false;
+  }
+
   isFileInDirectory(dir, file) {
     let absoluteDir = TemplatePath.absolutePath(dir);
     let absoluteFile = TemplatePath.absolutePath(file);
@@ -77,6 +96,18 @@ class EleventyDevServer {
     }
 
     computedPath = decodeURIComponent(computedPath);
+
+    if(!filename) { // is a direct URL request (not an implicit .html or index.html add)
+      let alias = this.matchPassthroughAlias(filepath);
+
+      if(alias) {
+        if(!this.isFileInDirectory(path.resolve("."), alias)) {
+          throw new Error("Invalid path");
+        }
+
+        return alias;
+      }
+    }
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
     if(!this.isFileInDirectory(this.dir, computedPath)) {

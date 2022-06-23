@@ -104,3 +104,26 @@ test("Url mapping for a filename with a space in it", t => {
 
   server.close();
 });
+
+test("matchPassthroughAlias", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/");
+
+  server.setAliases({
+    // works with directories
+    "/img": "./img",
+    "/other": "./alternative",
+    // or full paths
+    "/elsewhere/index.css": "./css/index.css",
+  });
+
+  t.is(server.matchPassthroughAlias("/"), false);
+
+  t.is(server.matchPassthroughAlias("/other"), "./alternative");
+  t.is(server.matchPassthroughAlias("/other/test"), "./alternative/test");
+
+  t.is(server.matchPassthroughAlias("/unknown.png"), false);
+  t.is(server.matchPassthroughAlias("/img/test.png"), "./img/test.png");
+
+  t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./css/index.css");
+  t.is(server.matchPassthroughAlias("/elsewhere/another.css"), false);
+});

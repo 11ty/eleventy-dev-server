@@ -57,6 +57,12 @@ class EleventyDevServer {
     this.logger = this.options.logger;
   }
 
+  isFileInDirectory(dir, file) {
+    let absoluteDir = TemplatePath.absolutePath(dir);
+    let absoluteFile = TemplatePath.absolutePath(file);
+    return absoluteFile.startsWith(absoluteDir);
+  }
+
   getOutputDirFilePath(filepath, filename = "") {
     let computedPath;
     if(filename === ".html") {
@@ -73,9 +79,7 @@ class EleventyDevServer {
     computedPath = decodeURIComponent(computedPath);
 
     // Check that the file is in the output path (error if folks try use `..` in the filepath)
-    let absComputedPath = TemplatePath.absolutePath(computedPath);
-    let absOutputDir = TemplatePath.absolutePath(computedPath);
-    if (!absComputedPath.startsWith(absOutputDir)) {
+    if(!this.isFileInDirectory(this.dir, computedPath)) {
       throw new Error("Invalid path");
     }
 

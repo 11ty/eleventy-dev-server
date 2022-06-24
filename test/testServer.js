@@ -108,22 +108,27 @@ test("Url mapping for a filename with a space in it", t => {
 test("matchPassthroughAlias", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
+  // url => project root input
   server.setAliases({
     // works with directories
-    "/img": "./img",
-    "/other": "./alternative",
+    "/img": "./test/stubs/img",
+    "/elsewhere": "./test/stubs/alternative",
     // or full paths
-    "/elsewhere/index.css": "./css/index.css",
+    "/elsewhere/index.css": "./test/stubs/with-css/style.css",
   });
 
+  // No map entry
   t.is(server.matchPassthroughAlias("/"), false);
+  t.is(server.matchPassthroughAlias("/index.html"), false); // file exists
 
-  t.is(server.matchPassthroughAlias("/other"), "./alternative");
-  t.is(server.matchPassthroughAlias("/other/test"), "./alternative/test");
+  // File exists
+  t.is(server.matchPassthroughAlias("/elsewhere"), "./test/stubs/alternative");
+  t.is(server.matchPassthroughAlias("/elsewhere/test"), "./test/stubs/alternative/test");
 
-  t.is(server.matchPassthroughAlias("/unknown.png"), false);
-  t.is(server.matchPassthroughAlias("/img/test.png"), "./img/test.png");
-
-  t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./css/index.css");
+  // Map entry exists but file does not exist
+  t.is(server.matchPassthroughAlias("/elsewhere/test.png"), false);
   t.is(server.matchPassthroughAlias("/elsewhere/another.css"), false);
+  
+  // Map entry exists, file exists
+  t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./test/stubs/with-css/style.css");
 });

@@ -245,3 +245,14 @@ test("Two middlewares, end() in the first, skip the second", async t => {
 
   server.close();
 });
+
+test("Fun unicode paths", async t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
+  server.serve(8080);
+
+  let data = await makeRequestTo(t, server, encodeURI(`/zach’s.html`));
+  t.true(data.includes("<script "));
+  t.true(data.startsWith("This is a test"));
+
+  server.close();
+});

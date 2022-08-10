@@ -149,5 +149,83 @@ test("pathPrefix matching", async (t) => {
     filepath: testNormalizeFilePath("test/stubs/index.html")
   });
 
+  // `/` should redirect to pathprefix
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 301,
+    url: '/pathprefix/',
+  });
+
+  server.close();
+});
+
+test("pathPrefix without leading slash", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+    pathPrefix: "pathprefix/"
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route1/index.html")
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/index.html")
+  });
+
+  // `/` should redirect to pathprefix
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 301,
+    url: '/pathprefix/',
+  });
+
+  server.close();
+});
+
+test("pathPrefix without trailing slash", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+    pathPrefix: "/pathprefix"
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route1/index.html")
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/index.html")
+  });
+
+  // `/` should redirect to pathprefix
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 301,
+    url: '/pathprefix/',
+  });
+
+  server.close();
+});
+
+test("pathPrefix without leading or trailing slash", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+    pathPrefix: "pathprefix"
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route1/index.html")
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/index.html")
+  });
+
+  // `/` should redirect to pathprefix
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 301,
+    url: '/pathprefix/',
+  });
+
   server.close();
 });

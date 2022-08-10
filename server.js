@@ -48,6 +48,8 @@ class EleventyDevServer {
   constructor(name, dir, options = {}) {
     this.name = name;
     this.options = Object.assign({}, DEFAULT_OPTIONS, options);
+    this.options.pathPrefix = this.cleanupPathPrefix(this.options.pathPrefix);
+
     this.fileCache = {};
     // Directory to serve
     if(!dir) {
@@ -55,6 +57,19 @@ class EleventyDevServer {
     }
     this.dir = dir;
     this.logger = this.options.logger;
+  }
+
+  cleanupPathPrefix(pathPrefix) {
+    if(!pathPrefix || pathPrefix === "/") {
+      return "/";
+    }
+    if(!pathPrefix.startsWith("/")) {
+      pathPrefix = `/${pathPrefix}`
+    }
+    if(!pathPrefix.endsWith("/")) {
+      pathPrefix = `${pathPrefix}/`;
+    }
+    return pathPrefix;
   }
 
   // Allowed list of files that can be served from outside `dir`
@@ -146,6 +161,15 @@ class EleventyDevServer {
 
     // Remove PathPrefix from start of URL
     if (this.options.pathPrefix !== "/") {
+      // Requests to root should redirect to new pathPrefix
+      if(url === "/") {
+        return {
+          statusCode: 301,
+          url: this.options.pathPrefix,
+        }
+      }
+
+      // Requests to anything outside of root should fail with 404
       if (!url.startsWith(this.options.pathPrefix)) {
         return {
           statusCode: 404,

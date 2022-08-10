@@ -132,3 +132,22 @@ test("matchPassthroughAlias", async (t) => {
   // Map entry exists, file exists
   t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./test/stubs/with-css/style.css");
 });
+
+
+test("pathPrefix matching", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+    pathPrefix: "/pathprefix/"
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route1/index.html")
+  });
+
+  t.deepEqual(server.mapUrlToFilePath("/pathprefix/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/index.html")
+  });
+
+  server.close();
+});

@@ -152,7 +152,7 @@ class EleventyDevServer {
         };
       }
 
-      url = url.substr(this.options.pathPrefix.length);
+      url = url.slice(this.options.pathPrefix.length - 1);
     }
 
     let rawPath = this.getOutputDirFilePath(url);

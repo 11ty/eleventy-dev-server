@@ -164,7 +164,7 @@ class EleventyDevServer {
       // Requests to root should redirect to new pathPrefix
       if(url === "/") {
         return {
-          statusCode: 301,
+          statusCode: 302,
           url: this.options.pathPrefix,
         }
       }

@@ -151,7 +151,7 @@ test("pathPrefix matching", async (t) => {
 
   // `/` should redirect to pathprefix
   t.deepEqual(server.mapUrlToFilePath("/"), {
-    statusCode: 301,
+    statusCode: 302,
     url: '/pathprefix/',
   });
 
@@ -175,7 +175,7 @@ test("pathPrefix without leading slash", async (t) => {
 
   // `/` should redirect to pathprefix
   t.deepEqual(server.mapUrlToFilePath("/"), {
-    statusCode: 301,
+    statusCode: 302,
     url: '/pathprefix/',
   });
 
@@ -199,7 +199,7 @@ test("pathPrefix without trailing slash", async (t) => {
 
   // `/` should redirect to pathprefix
   t.deepEqual(server.mapUrlToFilePath("/"), {
-    statusCode: 301,
+    statusCode: 302,
     url: '/pathprefix/',
   });
 
@@ -223,7 +223,7 @@ test("pathPrefix without leading or trailing slash", async (t) => {
 
   // `/` should redirect to pathprefix
   t.deepEqual(server.mapUrlToFilePath("/"), {
-    statusCode: 301,
+    statusCode: 302,
     url: '/pathprefix/',
   });
 

@@ -38,19 +38,19 @@
   "bugs": "https://github.com/11ty/eleventy-dev-server/issues",
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
-    "@11ty/eleventy-utils": "^1.0.0",
+    "@11ty/eleventy-utils": "^1.0.1",
     "chokidar": "^3.5.3",
-    "debug": "^4.3.3",
+    "debug": "^4.3.4",
     "dev-ip": "^1.0.1",
-    "finalhandler": "^1.1.2",
+    "finalhandler": "^1.2.0",
     "mime": "^3.0.0",
-    "minimist": "^1.2.6",
+    "minimist": "^1.2.7",
     "morphdom": "^2.6.1",
     "please-upgrade-node": "^3.2.0",
     "ssri": "^8.0.1",
-    "ws": "^8.5.0"
+    "ws": "^8.12.0"
   },
   "devDependencies": {
-    "ava": "^4.0.1"
+    "ava": "^5.1.0"
   }
 }

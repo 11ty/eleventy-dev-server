@@ -20,7 +20,8 @@ const debug = require("debug")("EleventyDevServer:cmd");
 try {
   const argv = require("minimist")(process.argv.slice(2), {
     string: [
-      "input",
+      "dir",
+      "input", // alias for dir
       "port",
     ],
     boolean: [
@@ -53,7 +54,7 @@ try {
     let cli = new Cli();
 
     cli.serve({
-      input: argv.input,
+      input: argv.dir || argv.input,
       port: argv.port,
       domdiff: argv.domdiff,
     });

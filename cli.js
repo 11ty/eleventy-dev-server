@@ -26,24 +26,25 @@ class Cli {
     return `Usage:
 
        eleventy-dev-server
-       eleventy-dev-server --input=_site
+       eleventy-dev-server --dir=_site
        eleventy-dev-server --port=3000
 
 Arguments:
 
      --version
 
-     --input=.
+     --dir=.
        Directory to serve (default: \`.\`)
 
+     --input (alias for --dir)
+
      --port=8080
-       Run the --serve web server on this port (default: \`8080\`)
+       Run the web server on this port (default: \`8080\`)
        Will autoincrement if already in use.
 
-     --domdiff          (enabled)
-     --domdiff=true     (enabled)
+     --domdiff          (enabled, default)
      --domdiff=false    (disabled)
-       Apply HTML changes without a full page reload. (default: \`true\`)
+       Apply HTML changes without a full page reload.
 
      --help`;
   }

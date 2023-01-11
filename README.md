@@ -37,8 +37,8 @@ npm install @11ty/eleventy-dev-server
 # Serve the current directory
 npx @11ty/eleventy-dev-server
 
-# Serve a different subdirectory
-npx @11ty/eleventy-dev-server --input=_site
+# Serve a different subdirectory (also aliased as --input)
+npx @11ty/eleventy-dev-server --dir=_site
 
 # Disable the `domdiff` feature
 npx @11ty/eleventy-dev-server --domdiff=false

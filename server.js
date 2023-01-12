@@ -6,6 +6,7 @@ const { WebSocketServer } = require("ws");
 const mime = require("mime");
 const ssri = require("ssri");
 const devip = require("dev-ip");
+const chokidar = require("chokidar");
 const { TemplatePath } = require("@11ty/eleventy-utils");
 
 const debug = require("debug")("EleventyDevServer");
@@ -23,8 +24,8 @@ const DEFAULT_OPTIONS = {
   domdiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
   showVersion: false,   // Whether or not to show the server version on the command line.
   encoding: "utf-8",    // Default file encoding
-
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
+  watch: [],            // Extra globs to pass to chokidar for watching
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -57,6 +58,41 @@ class EleventyDevServer {
     }
     this.dir = dir;
     this.logger = this.options.logger;
+
+    if(this.options.watch.length > 0) {
+      this.initializeWatcher();
+    }
+  }
+
+  get watcher() {
+    if(!this._watcher) {
+      this._watcher = chokidar.watch(this.options.watch, {
+        // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
+  
+        ignored: ["**/node_modules/**", ".git"],
+        ignoreInitial: true,
+  
+        // same values as Eleventy
+        awaitWriteFinish: {
+          stabilityThreshold: 150,
+          pollInterval: 25,
+        },
+      });
+    }
+
+    return this._watcher;
+  }
+
+  initializeWatcher() {
+    this.watcher.on("change", (path) => {
+      this.logger.info( "File modified:", path );
+      this.reloadFiles([path]);
+    });
+    
+    this.watcher.on("add", (path) => {
+      this.logger.info( "File added:", path );
+      this.reloadFiles([path]);
+    });
   }
 
   cleanupPathPrefix(pathPrefix) {
@@ -584,6 +620,9 @@ class EleventyDevServer {
     if(this.updateServer) {
       this.updateServer.close();
     }
+    if(this._watcher) {
+      this._watcher.close();
+    }
   }
 
   sendError({ error }) {
@@ -591,6 +630,71 @@ class EleventyDevServer {
       type: "eleventy.error",
       // Thanks https://stackoverflow.com/questions/18391212/is-it-not-possible-to-stringify-an-error-using-json-stringify
       error: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    });
+  }
+
+  // reverse of mapUrlToFilePath
+  // /resource/ <= /resource/index.html
+  // /resource <= resource.html
+  getUrlsFromFilePath(path) {
+    if(this.dir === ".") {
+      path = `/${path}`
+    } else {
+      path = path.slice(this.dir.length);
+    }
+
+    let urls = [];
+    urls.push(path);
+
+    if(path.endsWith("/index.html")) {
+      urls.push(path.slice(0, -1 * "index.html".length));
+    } else if(path.endsWith(".html")) {
+      urls.push(path.slice(0, -1 * ".html".length));
+    }
+
+    return urls;
+  }
+
+  // [{ url, inputPath, content }]
+  getBuildTemplatesFromFilePath(path) {
+    // We can skip this for non-html files, dom-diffing will not apply
+    if(!path.endsWith(".html")) {
+      return [];
+    }
+
+    let urls = this.getUrlsFromFilePath(path);
+    let obj = {
+      inputPath: path,
+      content: fs.readFileSync(path, "utf8"),
+    }
+
+    return urls.map(url => {
+      return Object.assign({ url }, obj);
+    });
+  }
+
+  reloadFiles(files, useDomDiffingForHtml = true) {
+    if(!Array.isArray(files)) {
+      throw new Error("reloadFiles method requires an array of file paths.");
+    }
+
+    let subtype;
+    if(!files.some((entry) => !entry.endsWith(".css"))) {
+      // all css changes
+      subtype = "css";
+    }
+
+    let templates = [];
+    if(useDomDiffingForHtml && this.options.domdiff) {
+      templates = files.filter(path => path.endsWith(".html")).map(path => this.getBuildTemplatesFromFilePath(path));
+    }
+
+    this.reload({
+      files,
+      subtype,
+      build: {
+        templates
+      }
     });
   }
 
@@ -603,6 +707,7 @@ class EleventyDevServer {
             // Don’t include any files if the dom diffing option is disabled
             return false;
           }
+
           // Filter to only include watched templates that were updated
           return (files || []).includes(entry.inputPath);
         });

@@ -114,10 +114,7 @@ class EleventyDevServer {
   }
 
   watchFiles(files) {
-    if(files && (!Array.isArray(files) || files.length > 0)) {
-      if(typeof files === "string") {
-        files = [files];
-      }
+    if(Array.isArray(files)) {
       files = files.map(entry => TemplatePath.stripLeadingDotSlash(entry));
 
       debug("Also watching %O", files);

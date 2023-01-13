@@ -30,6 +30,7 @@ const DEFAULT_OPTIONS = {
   // Logger (fancier one is injected by Eleventy)
   logger: {
     info: console.log,
+    log: console.log,
     error: console.error,
   }
 }

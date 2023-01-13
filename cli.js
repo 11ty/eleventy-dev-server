@@ -17,6 +17,8 @@ const Logger = {
   }
 };
 
+Logger.log = Logger.info;
+
 class Cli {
   static getVersion() {
     return pkg.version;

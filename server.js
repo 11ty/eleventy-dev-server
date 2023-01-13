@@ -58,21 +58,22 @@ class EleventyDevServer {
   }
 
   normalizeOptions(options = {}) {
+    this.options = Object.assign({}, DEFAULT_OPTIONS, options);
+
     // better names for options https://github.com/11ty/eleventy-dev-server/issues/41
     if(options.folder) {
       this.options.injectedScriptsFolder = options.folder;
-      delete options.folder;
+      delete this.options.folder;
     }
     if(options.domdiff) {
       this.options.domDiff = options.domdiff;
-      delete options.domdiff;
+      delete this.options.domdiff;
     }
     if(options.enabled) {
       this.options.liveReload = options.enabled;
-      delete options.enabled;
+      delete this.options.enabled;
     }
 
-    this.options = Object.assign({}, DEFAULT_OPTIONS, options);
     this.options.pathPrefix = this.cleanupPathPrefix(this.options.pathPrefix);
   }
 

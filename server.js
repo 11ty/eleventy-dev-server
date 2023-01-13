@@ -14,12 +14,11 @@ const debug = require("debug")("EleventyDevServer");
 
 const wrapResponse = require("./server/wrapResponse.js");
 
-const serverCache = {};
 const DEFAULT_OPTIONS = {
   port: 8080,
-  enabled: true,        // Enable live reload at all
+  liveReload: true,     // Enable live reload at all
   showAllHosts: false,  // IP address based hosts (other than localhost)
-  folder: ".11ty",      // Change the name of the special folder used for injected scripts
+  injectedScriptsFolder: ".11ty", // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
   domdiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
@@ -41,10 +40,10 @@ class EleventyDevServer {
   }
 
   constructor(name, dir, options = {}) {
+    debug("Creating new Dev Server instance.")
     this.name = name;
-    this.options = Object.assign({}, DEFAULT_OPTIONS, options);
-    this.options.pathPrefix = this.cleanupPathPrefix(this.options.pathPrefix);
-
+    this.normalizeOptions(options);
+    
     this.fileCache = {};
     // Directory to serve
     if(!dir) {
@@ -58,8 +57,28 @@ class EleventyDevServer {
     }
   }
 
+  normalizeOptions(options = {}) {
+    // better names for options https://github.com/11ty/eleventy-dev-server/issues/41
+    if(options.folder) {
+      this.options.injectedScriptsFolder = options.folder;
+      delete options.folder;
+    }
+    if(options.domdiff) {
+      this.options.domDiff = options.domdiff;
+      delete options.domdiff;
+    }
+    if(options.enabled) {
+      this.options.liveReload = options.enabled;
+      delete options.enabled;
+    }
+
+    this.options = Object.assign({}, DEFAULT_OPTIONS, options);
+    this.options.pathPrefix = this.cleanupPathPrefix(this.options.pathPrefix);
+  }
+
   get watcher() {
     if(!this._watcher) {
+      debug("Watching %O", this.options.watch);
       // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
@@ -93,7 +112,15 @@ class EleventyDevServer {
   }
 
   watchFiles(files) {
-    this.watcher.add(files);
+    if(files && (!Array.isArray(files) || files.length > 0)) {
+      if(typeof files === "string") {
+        files = [files];
+      }
+      files = files.map(entry => TemplatePath.stripLeadingDotSlash(entry));
+
+      debug("Also watching %O", files);
+      this.watcher.add(files);
+    }
   }
 
   cleanupPathPrefix(pathPrefix) {
@@ -111,7 +138,10 @@ class EleventyDevServer {
 
   // Allowed list of files that can be served from outside `dir`
   setAliases(aliases) {
-    this.passthroughAliases = aliases;
+    if(aliases) {
+      this.passthroughAliases = aliases;
+      debug( "Setting aliases (emulated passthrough copy) %O", aliases );
+    }
   }
 
   matchPassthroughAlias(url) {
@@ -307,7 +337,7 @@ class EleventyDevServer {
     }
 
     // This isn’t super necessary because it’s a local file, but it’s included anyway
-    let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.folder}/reload-client.js">`}</script>`;
+    let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.injectedScriptsFolder}/reload-client.js">`}</script>`;
 
     if (content.includes("</head>")) {
       return content.replace("</head>", `${script}</head>`);
@@ -361,13 +391,13 @@ class EleventyDevServer {
   }
 
   eleventyDevServerMiddleware(req, res, next) {
-    if(req.url === `/${this.options.folder}/reload-client.js`) {
-      if(this.options.enabled) {
+    if(req.url === `/${this.options.injectedScriptsFolder}/reload-client.js`) {
+      if(this.options.liveReload) {
         res.setHeader("Content-Type", mime.getType("js"));
         return res.end(this._getFileContents("./client/reload-client.js"));
       }
-    } else if(req.url === `/${this.options.folder}/morphdom.js`) {
-      if(this.options.domdiff) {
+    } else if(req.url === `/${this.options.injectedScriptsFolder}/morphdom.js`) {
+      if(this.options.domDiff) {
         res.setHeader("Content-Type", mime.getType("js"));
         return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
       }
@@ -437,7 +467,7 @@ class EleventyDevServer {
 
   async onRequestHandler (req, res) {
     res = wrapResponse(res, content => {
-      if(this.options.enabled !== false) {
+      if(this.options.liveReload !== false) {
         let scriptContents = this._getFileContents("./client/reload-client.js");
         let integrityHash = ssri.fromData(scriptContents);
 
@@ -696,7 +726,7 @@ class EleventyDevServer {
     }
 
     let templates = [];
-    if(useDomDiffingForHtml && this.options.domdiff) {
+    if(useDomDiffingForHtml && this.options.domDiff) {
       for(let filePath of files) {
         if(!filePath.endsWith(".html")) {
           continue;
@@ -721,7 +751,7 @@ class EleventyDevServer {
     if (build?.templates) {
       build.templates = build.templates
         .filter(entry => {
-          if(!this.options.domdiff) {
+          if(!this.options.domDiff) {
             // Don’t include any files if the dom diffing option is disabled
             return false;
           }

@@ -97,7 +97,7 @@ class Util {
 
 class EleventyReload {
   constructor() {
-    this.isConnected = false;
+    this.connectionMessageShown = false;
     this.reconnectEventCallback = this.reconnect.bind(this);
   }
 
@@ -140,8 +140,13 @@ class EleventyReload {
             if(!this.isConnected) {
               Util.log(Util.capitalize(data.status));
             }
-            this.isConnected = true;
+
+            this.connectionMessageShown = true;
           } else {
+            if(data.status === "disconnected") {
+              this.addReconnectListeners();
+            }
+
             Util.log(Util.capitalize(data.status));
           }
         } else {
@@ -154,13 +159,12 @@ class EleventyReload {
 
     socket.addEventListener("open", () => {
       // no reconnection when the connect is already open
-      this.applyReconnectListeners("remove");
+      this.removeReconnectListeners();
     });
     
     socket.addEventListener("close", () => {
-      this.isConnected = false;
-      this.applyReconnectListeners("remove");
-      this.applyReconnectListeners("add");
+      this.connectionMessageShown = false;
+      this.addReconnectListeners();
     });
   }
 
@@ -238,14 +242,16 @@ class EleventyReload {
     }
   }
 
-  applyReconnectListeners(mode) {
-    let method = "addEventListener";
-    if (mode === "remove") {
-      method = "removeEventListener";
-    }
+  addReconnectListeners() {
+    this.removeReconnectListeners();
 
-    window[method]("focus", this.reconnectEventCallback);
-    window[method]("visibilitychange", this.reconnectEventCallback);
+    window.addEventListener("focus", this.reconnectEventCallback);
+    window.addEventListener("visibilitychange", this.reconnectEventCallback);
+  }
+
+  removeReconnectListeners() {
+    window.removeEventListener("focus", this.reconnectEventCallback);
+    window.removeEventListener("visibilitychange", this.reconnectEventCallback);
   }
 }
 

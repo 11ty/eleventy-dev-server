@@ -65,6 +65,9 @@ Arguments:
       showVersion: true,
       logger: Logger,
       domdiff: this.options.domdiff,
+
+      // CLI watches all files in the folder by default 
+      // this is different from Eleventy usage!
       watch: [ this.options.input ],
     });
 

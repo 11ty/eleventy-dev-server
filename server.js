@@ -2,7 +2,8 @@ const pkg = require("./package.json");
 const path = require("path");
 const fs = require("fs");
 const finalhandler = require("finalhandler");
-const { WebSocketServer } = require("ws");
+const WebSocket = require("ws");
+const { WebSocketServer } = WebSocket;
 const mime = require("mime");
 const ssri = require("ssri");
 const devip = require("dev-ip");
@@ -66,6 +67,7 @@ class EleventyDevServer {
 
   get watcher() {
     if(!this._watcher) {
+      // TODO if using Eleventy and watch Array includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
   
@@ -85,12 +87,12 @@ class EleventyDevServer {
 
   initializeWatcher() {
     this.watcher.on("change", (path) => {
-      this.logger.info( "File modified:", path );
+      this.logger.info( `File modified: ${path}` );
       this.reloadFiles([path]);
     });
     
     this.watcher.on("add", (path) => {
-      this.logger.info( "File added:", path );
+      this.logger.info( `File added: ${path}` );
       this.reloadFiles([path]);
     });
   }
@@ -537,6 +539,7 @@ class EleventyDevServer {
 
     this._server.on("listening", (e) => {
       this.setupReloadNotifier();
+
       let { port } = this._server.address();
 
       let hostsStr = "";
@@ -582,12 +585,11 @@ class EleventyDevServer {
   // Websocket Notifications
   setupReloadNotifier() {
     let updateServer = new WebSocketServer({
+      // includes the port
       server: this.server,
     });
 
     updateServer.on("connection", (ws) => {
-      this.updateNotifier = ws;
-
       this.sendUpdateNotification({
         type: "eleventy.status",
         status: "connected",
@@ -601,9 +603,12 @@ class EleventyDevServer {
     this.updateServer = updateServer;
   }
 
+  // Broadcasts to all open browser windows
   sendUpdateNotification(obj) {
-    if (this.updateNotifier) {
-      this.updateNotifier.send(JSON.stringify(obj));
+    for(let client of this.updateServer.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(obj));
+      }
     }
   }
 
@@ -686,7 +691,14 @@ class EleventyDevServer {
 
     let templates = [];
     if(useDomDiffingForHtml && this.options.domdiff) {
-      templates = files.filter(path => path.endsWith(".html")).map(path => this.getBuildTemplatesFromFilePath(path));
+      for(let filePath of files) {
+        if(!filePath.endsWith(".html")) {
+          continue;
+        }
+        for(let templateEntry of this.getBuildTemplatesFromFilePath(filePath)) {
+          templates.push(templateEntry);
+        }
+      }
     }
 
     this.reload({

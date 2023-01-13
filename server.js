@@ -26,7 +26,7 @@ const DEFAULT_OPTIONS = {
   showVersion: false,   // Whether or not to show the server version on the command line.
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
-  watch: [],            // Extra globs to pass to chokidar for watching
+  watch: [],            // Globs to pass to separate dev server chokidar for watching
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -67,7 +67,7 @@ class EleventyDevServer {
 
   get watcher() {
     if(!this._watcher) {
-      // TODO if using Eleventy and watch Array includes output folder (_site) this will trigger two update events!
+      // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
   

@@ -98,6 +98,7 @@ class Util {
 class EleventyReload {
   constructor() {
     this.isConnected = false;
+    this.reconnectEventCallback = this.reconnect.bind(this);
   }
 
   init(options = {}) {
@@ -152,9 +153,10 @@ class EleventyReload {
     });
 
     socket.addEventListener("open", () => {
+      // no reconnection when the connect is already open
       this.applyReconnectListeners("remove");
     });
-
+    
     socket.addEventListener("close", () => {
       this.isConnected = false;
       this.applyReconnectListeners("remove");
@@ -242,8 +244,8 @@ class EleventyReload {
       method = "removeEventListener";
     }
 
-    window[method]("focus", this.reconnect.bind(this));
-    window[method]("visibilitychange", this.reconnect.bind(this));
+    window[method]("focus", this.reconnectEventCallback);
+    window[method]("visibilitychange", this.reconnectEventCallback);
   }
 }
 

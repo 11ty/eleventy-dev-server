@@ -29,6 +29,8 @@ npm install -g @11ty/eleventy-dev-server
 npm install @11ty/eleventy-dev-server
 ```
 
+This package requires Node 14 or newer.
+
 ### CLI Usage
 
 ```sh

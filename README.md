@@ -16,13 +16,11 @@ A minimal, modern, generic, hot-reloading local web server to help web developer
 
 ## Installation
 
-You _do not need to install this_ separately—it is bundled with `@11ty/eleventy` starting with Eleventy v2.0.0.
+This is bundled with `@11ty/eleventy` (and you do not need to install it separately) in Eleventy v2.0.
 
 ## CLI
 
-As of `1.0.0-canary.10` we now include a CLI for the Eleventy Dev Server.
-
-This is for **standalone** use only. Installation is unnecessary if you’re using this with Eleventy.
+Eleventy Dev Server now also includes a CLI. The CLI is for **standalone** (non-Eleventy) use only: separate installation is unnecessary if you’re using this server with `@11ty/eleventy`.
 
 ```sh
 npm install -g @11ty/eleventy-dev-server

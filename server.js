@@ -37,14 +37,7 @@ const DEFAULT_OPTIONS = {
 
 class EleventyDevServer {
   static getServer(...args) {
-    let [name] = args;
-
-    // TODO what if previously cached server has new/different dir or options
-    if (!serverCache[name]) {
-      serverCache[name] = new EleventyDevServer(...args);
-    }
-
-    return serverCache[name];
+    return new EleventyDevServer(...args);
   }
 
   constructor(name, dir, options = {}) {
@@ -61,7 +54,7 @@ class EleventyDevServer {
     this.logger = this.options.logger;
 
     if(this.options.watch.length > 0) {
-      this.initializeWatcher();
+      this.getWatcher();
     }
   }
 
@@ -80,21 +73,27 @@ class EleventyDevServer {
           pollInterval: 25,
         },
       });
+
+      this._watcher.on("change", (path) => {
+        this.logger.log( `File changed: ${path} (skips build)` );
+        this.reloadFiles([path]);
+      });
+      
+      this._watcher.on("add", (path) => {
+        this.logger.log( `File added: ${path} (skips build)` );
+        this.reloadFiles([path]);
+      });
     }
 
     return this._watcher;
   }
 
-  initializeWatcher() {
-    this.watcher.on("change", (path) => {
-      this.logger.info( `File modified: ${path}` );
-      this.reloadFiles([path]);
-    });
-    
-    this.watcher.on("add", (path) => {
-      this.logger.info( `File added: ${path}` );
-      this.reloadFiles([path]);
-    });
+  getWatcher() {
+    return this.watcher;
+  }
+
+  watchFiles(files) {
+    this.watcher.add(files);
   }
 
   cleanupPathPrefix(pathPrefix) {
@@ -571,6 +570,8 @@ class EleventyDevServer {
   }
 
   serve(port) {
+    this.getWatcher();
+
     this._serverListen(port);
   }
 
@@ -631,6 +632,7 @@ class EleventyDevServer {
     }
     if(this._watcher) {
       this._watcher.close();
+      delete this._watcher;
     }
   }
 

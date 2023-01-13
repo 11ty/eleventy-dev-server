@@ -605,6 +605,10 @@ class EleventyDevServer {
 
   // Broadcasts to all open browser windows
   sendUpdateNotification(obj) {
+    if(!this.updateServer?.clients) {
+      return;
+    }
+
     for(let client of this.updateServer.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(obj));

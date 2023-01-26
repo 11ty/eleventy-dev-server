@@ -761,7 +761,6 @@ class EleventyDevServer {
           // Filter to only include watched templates that were updated
           return (files || []).includes(entry.inputPath);
         });
-        console.log( build.templates );
     }
 
     this.sendUpdateNotification({

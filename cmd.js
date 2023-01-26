@@ -56,7 +56,7 @@ try {
     cli.serve({
       input: argv.dir || argv.input,
       port: argv.port,
-      domdiff: argv.domdiff,
+      domDiff: argv.domdiff,
     });
 
     process.on("SIGINT", () => {

@@ -55,7 +55,7 @@ Arguments:
     return {
       port: "8080",
       input: ".",
-      domdiff: true,
+      domDiff: true,
     }
   }
 
@@ -66,7 +66,7 @@ Arguments:
       // TODO allow server configuration extensions
       showVersion: true,
       logger: Logger,
-      domdiff: this.options.domdiff,
+      domDiff: this.options.domDiff,
 
       // CLI watches all files in the folder by default 
       // this is different from Eleventy usage!

@@ -21,7 +21,7 @@ const DEFAULT_OPTIONS = {
   injectedScriptsFolder: ".11ty", // Change the name of the special folder used for injected scripts
   portReassignmentRetryCount: 10, // number of times to increment the port if in use
   https: {},            // `key` and `cert`, required for http/2 and https
-  domdiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
+  domDiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
   showVersion: false,   // Whether or not to show the server version on the command line.
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
@@ -62,15 +62,15 @@ class EleventyDevServer {
     this.options = Object.assign({}, DEFAULT_OPTIONS, options);
 
     // better names for options https://github.com/11ty/eleventy-dev-server/issues/41
-    if(options.folder) {
+    if(options.folder !== undefined) {
       this.options.injectedScriptsFolder = options.folder;
       delete this.options.folder;
     }
-    if(options.domdiff) {
+    if(options.domdiff !== undefined) {
       this.options.domDiff = options.domdiff;
       delete this.options.domdiff;
     }
-    if(options.enabled) {
+    if(options.enabled !== undefined) {
       this.options.liveReload = options.enabled;
       delete this.options.enabled;
     }
@@ -521,6 +521,8 @@ class EleventyDevServer {
       return this._server;
     }
 
+    this.start = Date.now();
+
     // Check for secure server requirements, otherwise use HTTP
     let { key, cert } = this.options.https;
     if(key && cert) {
@@ -577,7 +579,8 @@ class EleventyDevServer {
         hostsStr = hosts.join(" ") + " ";
       }
 
-      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}${this.options.showVersion ? ` (v${pkg.version})` : ""}`);
+      let startBenchmark = ""; // this.start ? ` ready in ${Date.now() - this.start}ms` : "";
+      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
     });
 
     return this._server;
@@ -758,6 +761,7 @@ class EleventyDevServer {
           // Filter to only include watched templates that were updated
           return (files || []).includes(entry.inputPath);
         });
+        console.log( build.templates );
     }
 
     this.sendUpdateNotification({

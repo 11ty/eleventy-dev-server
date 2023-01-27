@@ -67,15 +67,6 @@ Arguments:
       showVersion: true,
       logger: Logger,
       domDiff: this.options.domDiff,
-      middleware: [
-        function (req, res, next) {
-          if (/.*\.php$/.test(req.url)) {
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          }
-
-          next();
-        }
-      ],
 
       // CLI watches all files in the folder by default 
       // this is different from Eleventy usage!

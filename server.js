@@ -44,7 +44,7 @@ class EleventyDevServer {
     debug("Creating new Dev Server instance.")
     this.name = name;
     this.normalizeOptions(options);
-    
+
     this.fileCache = {};
     // Directory to serve
     if(!dir) {
@@ -84,10 +84,10 @@ class EleventyDevServer {
       // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
-  
+
         ignored: ["**/node_modules/**", ".git"],
         ignoreInitial: true,
-  
+
         // same values as Eleventy
         awaitWriteFinish: {
           stabilityThreshold: 150,
@@ -99,7 +99,7 @@ class EleventyDevServer {
         this.logger.log( `File changed: ${path} (skips build)` );
         this.reloadFiles([path]);
       });
-      
+
       this._watcher.on("add", (path) => {
         this.logger.log( `File added: ${path} (skips build)` );
         this.reloadFiles([path]);
@@ -405,6 +405,89 @@ class EleventyDevServer {
     next();
   }
 
+  async netlifyRedirectMiddleware(req, res, next) {
+    if (req.netlifyRedirectHandled) {
+      return next();
+    }
+    req.netlifyRedirectHandled = true;
+    const matcher = await this.getNetlifyRedirectMatcher();
+
+    // We need some valid URL here. Localhost is used as a placeholder.
+    const reqUrl = new URL(req.url, "http://localhost");
+    const match = matcher.match({
+      scheme: reqUrl.protocol.replace(/:.*$/, ""),
+      host: reqUrl.hostname,
+      path: decodeURIComponent(reqUrl.pathname),
+      query: reqUrl.search.slice(1),
+    });
+
+    // Avoid recursive matches
+    if (match && req.url !== match.to) {
+      // This is, why we can't extract this into a separate module.
+      // This just rewrites the url of the request and
+      // treats it as a new request in the request handler.
+      req.url = match.to;
+      this.onRequestHandler(req, res);
+    } else {
+      next();
+    }
+  }
+
+  // Inspired by https://github.com/netlify/cli/blob/0f7ac190f9e1c7ed056d2feb1a1834c8305a048a/src/utils/rules-proxy.mjs
+  async getNetlifyRedirectMatcher() {
+    // Importing dynamically, because these modules are ESM based.
+    // This also means that they are cached between requests.
+    const redirectParser = await import("netlify-redirect-parser");
+    const redirector = (await import("netlify-redirector")).default;
+    // Maybe some caching can be done here?
+    // Currently they are loaded per request, because redirects can be generated in the output folder
+    const { redirects, errors } = await redirectParser.parseAllRedirects({
+      redirectsFiles: [path.join(this.dir, "_redirects")],
+      netlifyConfigPath: path.join(".", "netlify.toml"),
+    });
+
+    if (errors.length) {
+      this.logger.error(errors);
+    }
+
+    // `netlify-redirector` does not handle the same shape as the `netlify-redirect-parser` provides:
+    //  - `from` is called `origin`
+    //  - `query` is called `params`
+    //  - `conditions.role|country|language` are capitalized
+    const normalizeRedirect = function ({
+      conditions: { country, language, role, ...conditions },
+      from,
+      query,
+      signed,
+      ...redirect
+    }) {
+      return {
+        ...redirect,
+        origin: from,
+        params: query,
+        conditions: {
+          ...conditions,
+          ...(role && { Role: role }),
+          ...(country && { Country: country }),
+          ...(language && { Language: language }),
+        },
+        ...(signed && {
+          sign: {
+            jwt_secret: signed,
+          },
+        }),
+      };
+    };
+
+    const normRedirects = redirects.map(normalizeRedirect);
+    const matcher = await redirector.parseJSON(
+      JSON.stringify(normRedirects),
+      {}
+    );
+
+    return matcher;
+  }
+
   // This runs at the end of the middleware chain
   eleventyProjectMiddleware(req, res) {
     // Known issue with `finalhandler` and HTTP/2:
@@ -476,7 +559,7 @@ class EleventyDevServer {
         }
 
         return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
-          scriptContents,
+            scriptContents,
           integrityHash
         });
       }
@@ -486,6 +569,7 @@ class EleventyDevServer {
 
     let middlewares = this.options.middleware || [];
     middlewares = middlewares.slice();
+    middlewares.push(this.netlifyRedirectMiddleware);
 
     // TODO because this runs at the very end of the middleware chain,
     // if we move the static stuff up in the order we could use middleware to modify
@@ -754,13 +838,13 @@ class EleventyDevServer {
       build.templates = build.templates
         .filter(entry => {
           if(!this.options.domDiff) {
-            // Don’t include any files if the dom diffing option is disabled
-            return false;
-          }
+          // Don’t include any files if the dom diffing option is disabled
+          return false;
+        }
 
-          // Filter to only include watched templates that were updated
-          return (files || []).includes(entry.inputPath);
-        });
+        // Filter to only include watched templates that were updated
+        return (files || []).includes(entry.inputPath);
+      });
     }
 
     this.sendUpdateNotification({

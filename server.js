@@ -449,6 +449,7 @@ class EleventyDevServer {
         let raw404Path = this.getOutputDirFilePath("404.html");
         if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
           res.statusCode = match.statusCode;
+          res.isCustomErrorPage = true;
           return this.renderFile(raw404Path, res);
         }
       }
@@ -474,11 +475,11 @@ class EleventyDevServer {
         let scriptContents = this._getFileContents("./client/reload-client.js");
         let integrityHash = ssri.fromData(scriptContents);
 
-        // finalhandler error pages have a Content-Security-Policy that prevented the client script from executing
-        if(res.statusCode !== 200) {
+        // Bare (not-custom) finalhandler error pages have a Content-Security-Policy `default-src 'none'` that
+        // prevents the client script from executing, so we override it
+        if(res.statusCode !== 200 && !res.isCustomErrorPage) {
           res.setHeader("Content-Security-Policy", `script-src '${integrityHash}'`);
         }
-
         return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
           scriptContents,
           integrityHash

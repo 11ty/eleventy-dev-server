@@ -26,6 +26,7 @@ const DEFAULT_OPTIONS = {
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
+  aliases: {},          // Aliasing feature
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -144,12 +145,13 @@ class EleventyDevServer {
   }
 
   matchPassthroughAlias(url) {
-    for(let targetUrl in this.passthroughAliases) {
+    let aliases = Object.assign({}, this.options.aliases, this.passthroughAliases);
+    for(let targetUrl in aliases) {
       if(!targetUrl) {
         continue;
       }
 
-      let file = this.passthroughAliases[targetUrl];
+      let file = aliases[targetUrl];
       if(url.startsWith(targetUrl)) {
         let inputDirectoryPath = file + url.slice(targetUrl.length);
 

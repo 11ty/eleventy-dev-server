@@ -42,6 +42,32 @@ async function makeRequestTo(t, server, path) {
   })
 }
 
+async function fetchHeadersForRequest(t, server, path) {
+  let port = await server.getPort();
+
+  return new Promise(resolve => {
+    const options = {
+      hostname: 'localhost',
+      port,
+      path,
+      method: 'GET',
+    };
+
+    http.get(options, (res) => {
+      const { statusCode } = res;
+      if(statusCode !== 200) {
+        throw new Error("Invalid status code" + statusCode);
+      }
+
+      let headers = res.headers;
+      resolve(headers);
+
+    }).on('error', (e) => {
+      console.error(`Got error: ${e.message}`);
+    });
+  })
+}
+
 test("Standard request", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
   server.serve(8080);
@@ -253,6 +279,26 @@ test("Fun unicode paths", async t => {
   let data = await makeRequestTo(t, server, encodeURI(`/zach’s.html`));
   t.true(data.includes("<script "));
   t.true(data.startsWith("This is a test"));
+
+  server.close();
+});
+
+test("Content-Type header via middleware", async t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
+    middleware: [
+      function (req, res, next) {
+        if (/.*\.php$/.test(req.url)) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+
+        next();
+      }
+    ]
+  }));
+  server.serve(8080);
+
+  let data = await fetchHeadersForRequest(t, server, encodeURI(`/index.php`));
+  t.true(data['content-type'] === 'text/html; charset=utf-8');
 
   server.close();
 });

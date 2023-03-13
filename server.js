@@ -373,19 +373,42 @@ class EleventyDevServer {
     return (content || "") + script;
   }
 
-  renderFile(filepath, res) {
-    let contents = fs.readFileSync(filepath);
-    let mimeType = mime.getType(filepath);
+  getFileContentType(filepath, res) {
+    let contentType = res.getHeader("Content-Type");
 
-    if (mimeType === "text/html") {
-      res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
-
-      // the string is important here, wrapResponse expects strings internally for HTML content (for now)
-      return res.end(contents.toString());
+    // Content-Type might be already set via middleware
+    if (contentType) {
+      return contentType;
     }
 
-    if (mimeType) {
-      res.setHeader("Content-Type", mimeType);
+    let mimeType = mime.getType(filepath);
+    if (!mimeType) {
+      return;
+    }
+
+    contentType = mimeType;
+
+    // We only want to append charset if the header is not already set
+    if (contentType === "text/html") {
+      contentType = `text/html; charset=${this.options.encoding}`;
+    }
+
+    return contentType;
+  }
+
+  renderFile(filepath, res) {
+    let contents = fs.readFileSync(filepath);
+    let contentType = this.getFileContentType(filepath, res);
+
+    if (!contentType) {
+      return res.end(contents);
+    }
+
+    res.setHeader("Content-Type", contentType);
+
+    if (contentType.startsWith("text/html")) {
+      // the string is important here, wrapResponse expects strings internally for HTML content (for now)
+      return res.end(contents.toString());
     }
 
     return res.end(contents);

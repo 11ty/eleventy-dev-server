@@ -494,7 +494,11 @@ class EleventyDevServer {
 
   async onRequestHandler (req, res) {
     res = wrapResponse(res, content => {
-      if(this.options.liveReload !== false) {
+
+      // check to see if this is a client fetch and not a navigation
+      let isXHR = req.headers["sec-fetch-mode"] && req.headers["sec-fetch-mode"] != "navigate";
+
+      if(this.options.liveReload !== false && !isXHR) {
         let scriptContents = this._getFileContents("./client/reload-client.js");
         let integrityHash = ssri.fromData(scriptContents);
 

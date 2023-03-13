@@ -427,27 +427,29 @@ class EleventyDevServer {
       },
     });
 
-    let match = this.mapUrlToFilePath(req.url);
-    debug( req.url, match );
-
-    if (match) {
-      if (match.statusCode === 200 && match.filepath) {
-        return this.renderFile(match.filepath, res);
+    // middleware (maybe a serverless request) already set a body upstream, skip this part
+    if(!res._shouldForceEnd) {
+      let match = this.mapUrlToFilePath(req.url);
+      debug( req.url, match );
+  
+      if (match) {
+        if (match.statusCode === 200 && match.filepath) {
+          return this.renderFile(match.filepath, res);
+        }
+  
+        // Redirects, usually for trailing slash to .html stuff
+        if (match.url) {
+          res.statusCode = match.statusCode;
+          res.setHeader("Location", match.url);
+          return res.end();
+        }
+  
+        let raw404Path = this.getOutputDirFilePath("404.html");
+        if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
+          res.statusCode = match.statusCode;
+          return this.renderFile(raw404Path, res);
+        }
       }
-
-      // Redirects, usually for trailing slash to .html stuff
-      if (match.url) {
-        res.statusCode = match.statusCode;
-        res.setHeader("Location", match.url);
-        return res.end();
-      }
-
-      let raw404Path = this.getOutputDirFilePath("404.html");
-      if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
-        res.statusCode = match.statusCode;
-        return this.renderFile(raw404Path, res);
-      }
-
     }
 
     if(res.body && !res.bodyUsed) {

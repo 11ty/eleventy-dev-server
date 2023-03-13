@@ -96,7 +96,7 @@ function wrapResponse(resp, transformHtml) {
       // Only transform HTML
       // Note the “setHeader versus writeHead” note on https://nodejs.org/api/http.html#responsewriteheadstatuscode-statusmessage-headers
       let contentType = this._contentType || getContentType(this.getHeaders());
-      if(contentType.startsWith("text/html")) {
+      if(contentType && contentType.startsWith("text/html")) {
         if(this._wrappedTransformHtml && typeof this._wrappedTransformHtml === "function") {
           result = this._wrappedTransformHtml(result);
           this.setHeader("Content-Length", Buffer.byteLength(result));

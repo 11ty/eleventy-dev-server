@@ -42,9 +42,35 @@ async function makeRequestTo(t, server, path) {
   })
 }
 
+async function fetchHeadersForRequest(t, server, path) {
+  let port = await server.getPort();
+
+  return new Promise(resolve => {
+    const options = {
+      hostname: 'localhost',
+      port,
+      path,
+      method: 'GET',
+    };
+
+    http.get(options, (res) => {
+      const { statusCode } = res;
+      if(statusCode !== 200) {
+        throw new Error("Invalid status code" + statusCode);
+      }
+
+      let headers = res.headers;
+      resolve(headers);
+
+    }).on('error', (e) => {
+      console.error(`Got error: ${e.message}`);
+    });
+  })
+}
+
 test("Standard request", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -62,7 +88,7 @@ test("One sync middleware", async t => {
     ],
   }));
 
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -82,7 +108,7 @@ test("Two sync middleware", async t => {
       }
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -99,7 +125,7 @@ test("One async middleware", async t => {
       }
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -119,7 +145,7 @@ test("Two async middleware", async t => {
       }
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -147,7 +173,7 @@ test("Async middleware that writes", async t => {
       },
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -184,7 +210,7 @@ test("Second async middleware that writes", async t => {
       },
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -211,7 +237,7 @@ test("Second middleware that consumes first middleware response body, issue #29"
       },
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -236,7 +262,7 @@ test("Two middlewares, end() in the first, skip the second", async t => {
       },
     ],
   }));
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, "/sample");
   t.true(data.includes("<script "));
@@ -248,11 +274,31 @@ test("Two middlewares, end() in the first, skip the second", async t => {
 
 test("Fun unicode paths", async t => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
-  server.serve(8080);
+  server.serve(8100);
 
   let data = await makeRequestTo(t, server, encodeURI(`/zach’s.html`));
   t.true(data.includes("<script "));
   t.true(data.startsWith("This is a test"));
+
+  server.close();
+});
+
+test("Content-Type header via middleware", async t => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
+    middleware: [
+      function (req, res, next) {
+        if (/.*\.php$/.test(req.url)) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+
+        next();
+      }
+    ]
+  }));
+  server.serve(8100);
+
+  let data = await fetchHeadersForRequest(t, server, encodeURI(`/index.php`));
+  t.true(data['content-type'] === 'text/html; charset=utf-8');
 
   server.close();
 });

@@ -26,6 +26,7 @@ const DEFAULT_OPTIONS = {
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
+  aliases: {},          // Aliasing feature
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -144,12 +145,13 @@ class EleventyDevServer {
   }
 
   matchPassthroughAlias(url) {
-    for(let targetUrl in this.passthroughAliases) {
+    let aliases = Object.assign({}, this.options.aliases, this.passthroughAliases);
+    for(let targetUrl in aliases) {
       if(!targetUrl) {
         continue;
       }
 
-      let file = this.passthroughAliases[targetUrl];
+      let file = aliases[targetUrl];
       if(url.startsWith(targetUrl)) {
         let inputDirectoryPath = file + url.slice(targetUrl.length);
 
@@ -371,19 +373,42 @@ class EleventyDevServer {
     return (content || "") + script;
   }
 
-  renderFile(filepath, res) {
-    let contents = fs.readFileSync(filepath);
-    let mimeType = mime.getType(filepath);
+  getFileContentType(filepath, res) {
+    let contentType = res.getHeader("Content-Type");
 
-    if (mimeType === "text/html") {
-      res.setHeader("Content-Type", `text/html; charset=${this.options.encoding}`);
-
-      // the string is important here, wrapResponse expects strings internally for HTML content (for now)
-      return res.end(contents.toString());
+    // Content-Type might be already set via middleware
+    if (contentType) {
+      return contentType;
     }
 
-    if (mimeType) {
-      res.setHeader("Content-Type", mimeType);
+    let mimeType = mime.getType(filepath);
+    if (!mimeType) {
+      return;
+    }
+
+    contentType = mimeType;
+
+    // We only want to append charset if the header is not already set
+    if (contentType === "text/html") {
+      contentType = `text/html; charset=${this.options.encoding}`;
+    }
+
+    return contentType;
+  }
+
+  renderFile(filepath, res) {
+    let contents = fs.readFileSync(filepath);
+    let contentType = this.getFileContentType(filepath, res);
+
+    if (!contentType) {
+      return res.end(contents);
+    }
+
+    res.setHeader("Content-Type", contentType);
+
+    if (contentType.startsWith("text/html")) {
+      // the string is important here, wrapResponse expects strings internally for HTML content (for now)
+      return res.end(contents.toString());
     }
 
     return res.end(contents);
@@ -510,27 +535,30 @@ class EleventyDevServer {
       },
     });
 
-    let match = this.mapUrlToFilePath(req.url);
-    debug( req.url, match );
-
-    if (match) {
-      if (match.statusCode === 200 && match.filepath) {
-        return this.renderFile(match.filepath, res);
+    // middleware (maybe a serverless request) already set a body upstream, skip this part
+    if(!res._shouldForceEnd) {
+      let match = this.mapUrlToFilePath(req.url);
+      debug( req.url, match );
+  
+      if (match) {
+        if (match.statusCode === 200 && match.filepath) {
+          return this.renderFile(match.filepath, res);
+        }
+  
+        // Redirects, usually for trailing slash to .html stuff
+        if (match.url) {
+          res.statusCode = match.statusCode;
+          res.setHeader("Location", match.url);
+          return res.end();
+        }
+  
+        let raw404Path = this.getOutputDirFilePath("404.html");
+        if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
+          res.statusCode = match.statusCode;
+          res.isCustomErrorPage = true;
+          return this.renderFile(raw404Path, res);
+        }
       }
-
-      // Redirects, usually for trailing slash to .html stuff
-      if (match.url) {
-        res.statusCode = match.statusCode;
-        res.setHeader("Location", match.url);
-        return res.end();
-      }
-
-      let raw404Path = this.getOutputDirFilePath("404.html");
-      if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
-        res.statusCode = match.statusCode;
-        return this.renderFile(raw404Path, res);
-      }
-
     }
 
     if(res.body && !res.bodyUsed) {
@@ -549,15 +577,19 @@ class EleventyDevServer {
 
   async onRequestHandler (req, res) {
     res = wrapResponse(res, content => {
-      if(this.options.liveReload !== false) {
+
+      // check to see if this is a client fetch and not a navigation
+      let isXHR = req.headers["sec-fetch-mode"] && req.headers["sec-fetch-mode"] != "navigate";
+
+      if(this.options.liveReload !== false && !isXHR) {
         let scriptContents = this._getFileContents("./client/reload-client.js");
         let integrityHash = ssri.fromData(scriptContents);
 
-        // finalhandler error pages have a Content-Security-Policy that prevented the client script from executing
-        if(res.statusCode !== 200) {
+        // Bare (not-custom) finalhandler error pages have a Content-Security-Policy `default-src 'none'` that
+        // prevents the client script from executing, so we override it
+        if(res.statusCode !== 200 && !res.isCustomErrorPage) {
           res.setHeader("Content-Security-Policy", `script-src '${integrityHash}'`);
         }
-
         return this.augmentContentWithNotifier(content, res.statusCode !== 200, {
             scriptContents,
           integrityHash

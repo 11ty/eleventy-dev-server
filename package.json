@@ -1,6 +1,6 @@
 {
   "name": "@11ty/eleventy-dev-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A minimal, modern, generic, hot-reloading local web server to help web developers.",
   "main": "server.js",
   "scripts": {
@@ -44,15 +44,15 @@
     "dev-ip": "^1.0.1",
     "finalhandler": "^1.2.0",
     "mime": "^3.0.0",
-    "minimist": "^1.2.7",
-    "morphdom": "^2.6.1",
+    "minimist": "^1.2.8",
+    "morphdom": "^2.7.0",
     "netlify-redirect-parser": "^14.1.1",
     "netlify-redirector": "^0.4.0",
     "please-upgrade-node": "^3.2.0",
     "ssri": "^8.0.1",
-    "ws": "^8.12.0"
+    "ws": "^8.13.0"
   },
   "devDependencies": {
-    "ava": "^5.1.0"
+    "ava": "^5.2.0"
   }
 }

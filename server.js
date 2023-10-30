@@ -27,6 +27,8 @@ const DEFAULT_OPTIONS = {
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
   aliases: {},          // Aliasing feature
+  rebuildUrl: null,     // POST URL to trigger rebuild
+  rebuildUrlToken: "",  // Secret token in x-11ty-rebuild-token header
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -42,10 +44,10 @@ class EleventyDevServer {
   }
 
   constructor(name, dir, options = {}) {
-    debug("Creating new Dev Server instance.")
+    debug("Creating new Dev Server instance.");
     this.name = name;
     this.normalizeOptions(options);
-    
+
     this.fileCache = {};
     // Directory to serve
     if(!dir) {
@@ -79,16 +81,20 @@ class EleventyDevServer {
     this.options.pathPrefix = this.cleanupPathPrefix(this.options.pathPrefix);
   }
 
+  setEventBus(_eventBus) {
+    this.eventBus = _eventBus;
+  }
+
   get watcher() {
     if(!this._watcher) {
       debug("Watching %O", this.options.watch);
       // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
-  
+
         ignored: ["**/node_modules/**", ".git"],
         ignoreInitial: true,
-  
+
         // same values as Eleventy
         awaitWriteFinish: {
           stabilityThreshold: 150,
@@ -100,7 +106,7 @@ class EleventyDevServer {
         this.logger.log( `File changed: ${path} (skips build)` );
         this.reloadFiles([path]);
       });
-      
+
       this._watcher.on("add", (path) => {
         this.logger.log( `File added: ${path} (skips build)` );
         this.reloadFiles([path]);
@@ -415,6 +421,18 @@ class EleventyDevServer {
   }
 
   eleventyDevServerMiddleware(req, res, next) {
+    if (this.options.rebuildUrl && req.url === this.options.rebuildUrl && req.method === 'POST') {
+      const token = req.headers['x-11ty-rebuild-token'];
+      if (token !== this.options.rebuildUrlToken) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        return res.end('Forbidden');
+      }
+
+      this.eventBus.emit('eleventyDevServer.rebuild');
+      res.writeHead(200);
+      return res.end();
+    }
+
     if(req.url === `/${this.options.injectedScriptsFolder}/reload-client.js`) {
       if(this.options.liveReload) {
         res.setHeader("Content-Type", mime.getType("js"));
@@ -456,19 +474,19 @@ class EleventyDevServer {
     if(!res._shouldForceEnd) {
       let match = this.mapUrlToFilePath(req.url);
       debug( req.url, match );
-  
+
       if (match) {
         if (match.statusCode === 200 && match.filepath) {
           return this.renderFile(match.filepath, res);
         }
-  
+
         // Redirects, usually for trailing slash to .html stuff
         if (match.url) {
           res.statusCode = match.statusCode;
           res.setHeader("Location", match.url);
           return res.end();
         }
-  
+
         let raw404Path = this.getOutputDirFilePath("404.html");
         if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
           res.statusCode = match.statusCode;

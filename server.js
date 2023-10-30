@@ -79,7 +79,7 @@ class EleventyDevServer {
   }
 
   constructor(name, dir, options = {}) {
-    debug("Creating new Dev Server instance.")
+    debug("Creating new Dev Server instance.");
     this.name = name;
     this.normalizeOptions(options);
 

@@ -1,6 +1,7 @@
 const test = require("ava");
 const path = require("path");
 const http = require("http");
+const process = require("process");
 const EleventyDevServer = require("../");
 
 function getOptions(options = {}) {
@@ -8,6 +9,8 @@ function getOptions(options = {}) {
     info: function() {},
     error: function() {},
   };
+  // Servers don't close fast enough during testing.
+  options.portReassignmentRetryCount = 999; 
   return options;
 }
 
@@ -300,5 +303,39 @@ test("Content-Type header via middleware", async t => {
   let data = await fetchHeadersForRequest(t, server, encodeURI(`/index.php`));
   t.true(data['content-type'] === 'text/html; charset=utf-8');
 
+  server.close();
+});
+
+// These tests need to be run serially because they set+read environment
+// variables.
+test.serial("Base URL is injected into environment", async t => {
+  let server = new EleventyDevServer(
+    "test-server",
+    "./test/stubs/",
+    getOptions({injectBaseUrlIntoEnvironment: true})
+    );
+  // Use a port < 8100 so we don't get caught by increasing port numbers.
+  server.serve(8075);
+  await makeRequestTo(t, server, "/");
+
+  t.true("ELEVENTY_SERVER_BASEURL" in process.env);
+  t.is(process.env.ELEVENTY_SERVER_BASEURL, "http://localhost:8075/");
+
+  delete process.env.ELEVENTY_SERVER_BASEURL;
+  server.close();
+});
+
+test.serial("Base URL is not injected into environment by default", async t => {
+  let server = new EleventyDevServer(
+    "test-server",
+    "./test/stubs/",
+    getOptions()
+  );
+  // If we set this to 8100 the first non-serial (concurrent) test that tries
+  // to serve on 8100 gets an ECONNRESET error.
+  server.serve(8200);
+  await makeRequestTo(t, server, "/");
+  
+  t.false("ELEVENTY_SERVER_BASEURL" in process.env);
   server.close();
 });

@@ -1,6 +1,7 @@
 const pkg = require("./package.json");
 const path = require("path");
 const fs = require("fs");
+const process = require("process");
 const finalhandler = require("finalhandler");
 const WebSocket = require("ws");
 const { WebSocketServer } = WebSocket;
@@ -23,6 +24,7 @@ const DEFAULT_OPTIONS = {
   https: {},            // `key` and `cert`, required for http/2 and https
   domDiff: true,        // Use morphdom to apply DOM diffing delta updates to HTML
   showVersion: false,   // Whether or not to show the server version on the command line.
+  injectBaseUrlIntoEnvironment: false, // Whether or not to inject the base URL into an environment variable.
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
@@ -612,7 +614,11 @@ class EleventyDevServer {
       }
 
       let startBenchmark = ""; // this.start ? ` ready in ${Date.now() - this.start}ms` : "";
-      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
+      const baseUrl = `${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}`;
+      if (this.options.injectBaseUrlIntoEnvironment) {
+        process.env.ELEVENTY_SERVER_BASEURL = baseUrl;
+      }
+      this.logger.info(`Server at ${baseUrl}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
     });
 
     return this._server;

@@ -176,9 +176,11 @@ class EleventyReload {
   async onreload({ subtype, files, build }) {
     if (subtype === "css") {
       for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
-        let url = new URL(link.href);
-        url.searchParams.set("_11ty", Date.now());
-        link.href = url.toString();
+        if (link.href) {
+          let url = new URL(link.href);
+          url.searchParams.set("_11ty", Date.now());
+          link.href = url.toString();
+        }
       }
       Util.log(`CSS updated without page reload.`);
     } else {

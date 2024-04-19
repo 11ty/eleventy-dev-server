@@ -8,6 +8,7 @@ function getOptions(options = {}) {
     info: function() {},
     error: function() {},
   };
+  options.portReassignmentRetryCount = 100;
   return options;
 }
 
@@ -42,7 +43,7 @@ async function makeRequestTo(t, server, path) {
   })
 }
 
-async function fetchHeadersForRequest(t, server, path) {
+async function fetchHeadersForRequest(t, server, path, extras) {
   let port = await server.getPort();
 
   return new Promise(resolve => {
@@ -51,12 +52,18 @@ async function fetchHeadersForRequest(t, server, path) {
       port,
       path,
       method: 'GET',
+      ...extras,
     };
 
+    // Available status codes can be found here: http.STATUS_CODES
+    const successCodes = [
+      200, // OK
+      206, // Partial Content
+    ];
     http.get(options, (res) => {
       const { statusCode } = res;
-      if(statusCode !== 200) {
-        throw new Error("Invalid status code" + statusCode);
+      if (!successCodes.includes(statusCode)) {
+        throw new Error("Invalid status code " + statusCode);
       }
 
       let headers = res.headers;
@@ -299,6 +306,39 @@ test("Content-Type header via middleware", async t => {
 
   let data = await fetchHeadersForRequest(t, server, encodeURI(`/index.php`));
   t.true(data['content-type'] === 'text/html; charset=utf-8');
+
+  server.close();
+});
+
+test("Content-Range request", async (t) => {
+  let server = new EleventyDevServer(
+    "test-server",
+    "./test/stubs/",
+    getOptions()
+  );
+  server.serve(8100);
+
+  const options = { headers: { Range: "bytes=0-48" } };
+  let data = await fetchHeadersForRequest(t, server, `/index.html`, options);
+  t.true("accept-ranges" in data);
+  t.true(data["accept-ranges"] === "bytes");
+  t.true("content-range" in data);
+  t.true(data["content-range"].startsWith("bytes 0-48/"));
+
+  server.close();
+});
+
+test("Standard request does not include range headers", async (t) => {
+  let server = new EleventyDevServer(
+    "test-server",
+    "./test/stubs/",
+    getOptions()
+  );
+  server.serve(8100);
+
+  let data = await fetchHeadersForRequest(t, server, `/index.html`);
+  t.false("accept-ranges" in data);
+  t.false("content-range" in data);
 
   server.close();
 });

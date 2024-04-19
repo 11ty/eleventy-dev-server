@@ -6,6 +6,7 @@ const WebSocket = require("ws");
 const { WebSocketServer } = WebSocket;
 const mime = require("mime");
 const ssri = require("ssri");
+const send = require("send");
 const devip = require("dev-ip");
 const chokidar = require("chokidar");
 const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
@@ -515,6 +516,11 @@ class EleventyDevServer {
       debug( req.url, match );
 
       if (match) {
+        // Content-Range request, probably Safari trying to stream video
+        if (req.headers.range)  {
+          return send(req, match.filepath).pipe(res);
+        }
+
         if (match.statusCode === 200 && match.filepath) {
           return this.renderFile(match.filepath, res);
         }

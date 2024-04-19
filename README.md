@@ -29,7 +29,7 @@ npm install -g @11ty/eleventy-dev-server
 npm install @11ty/eleventy-dev-server
 ```
 
-This package requires Node 14 or newer.
+This package requires Node 18 or newer.
 
 ### CLI Usage
 
@@ -54,3 +54,7 @@ npm run test
 ```
 
 - We use the [ava JavaScript test runner](https://github.com/avajs/ava) ([Assertions documentation](https://github.com/avajs/ava/blob/master/docs/03-assertions.md))
+
+## Changelog
+
+* `v2.0.0` bumps Node.js minimum to 18.

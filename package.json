@@ -38,21 +38,21 @@
   "bugs": "https://github.com/11ty/eleventy-dev-server/issues",
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
-    "@11ty/eleventy-utils": "^1.0.1",
-    "chokidar": "^3.5.3",
+    "@11ty/eleventy-utils": "^1.0.2",
+    "chokidar": "^3.6.0",
     "debug": "^4.3.4",
     "dev-ip": "^1.0.1",
     "finalhandler": "^1.2.0",
     "mime": "^3.0.0",
     "minimist": "^1.2.8",
-    "morphdom": "^2.7.0",
+    "morphdom": "^2.7.2",
     "please-upgrade-node": "^3.2.0",
     "send": "^0.18.0",
-    "ssri": "^8.0.1",
+    "ssri": "^10.0.5",
     "urlpattern-polyfill": "^10.0.0",
-    "ws": "^8.13.0"
+    "ws": "^8.16.0"
   },
   "devDependencies": {
-    "ava": "^5.2.0"
+    "ava": "^6.1.2"
   }
 }

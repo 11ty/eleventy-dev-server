@@ -298,7 +298,7 @@ class EleventyDevServer {
     if (indexHtmlExists && !url.endsWith("/")) {
       return {
         statusCode: 301,
-        url: url + "/",
+        url: u.pathname + "/",
       };
     }
 
@@ -306,7 +306,7 @@ class EleventyDevServer {
     if (htmlExists && url.endsWith("/")) {
       return {
         statusCode: 301,
-        url: url.substring(0, url.length - 1),
+        url: u.pathname.substring(0, u.pathname.length - 1),
       };
     }
 

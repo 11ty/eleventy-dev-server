@@ -229,3 +229,30 @@ test("pathPrefix without leading or trailing slash", async (t) => {
 
   server.close();
 });
+
+test("indexFileName option: serve custom index when provided", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", { indexFileName: 'custom-index.html' });
+
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/custom-index.html"),
+  });
+
+
+  t.deepEqual(server.mapUrlToFilePath("/route1/"), {
+    statusCode: 200,
+    filepath: testNormalizeFilePath("test/stubs/route1/custom-index.html"),
+  });
+
+  server.close();
+});
+
+test("indexFileName option: return 404 when custom index file doesn't exist", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", { indexFileName: 'does-not-exist.html' });
+
+  t.deepEqual(server.mapUrlToFilePath("/"), {
+    statusCode: 404,
+  });
+
+  server.close();
+});

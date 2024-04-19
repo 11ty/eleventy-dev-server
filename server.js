@@ -32,6 +32,8 @@ const DEFAULT_OPTIONS = {
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
   aliases: {},          // Aliasing feature
+  indexFileName: "index.html", // Allow custom index file name
+
   onRequest: {},        // Maps URLPatterns to dynamic callback functions that run on a request from a client.
 
   // Example:
@@ -271,7 +273,7 @@ class EleventyDevServer {
       };
     }
 
-    let indexHtmlPath = this.getOutputDirFilePath(url, "index.html");
+    let indexHtmlPath = this.getOutputDirFilePath(url, this.options.indexFileName);
     let indexHtmlExists = fs.existsSync(indexHtmlPath);
 
     let htmlPath = this.getOutputDirFilePath(url, ".html");
@@ -795,8 +797,8 @@ class EleventyDevServer {
     let urls = [];
     urls.push(path);
 
-    if(path.endsWith("/index.html")) {
-      urls.push(path.slice(0, -1 * "index.html".length));
+    if(path.endsWith(`/${this.options.indexFileName}`)) {
+      urls.push(path.slice(0, -1 * this.options.indexFileName.length));
     } else if(path.endsWith(".html")) {
       urls.push(path.slice(0, -1 * ".html".length));
     }

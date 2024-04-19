@@ -6,13 +6,18 @@ const WebSocket = require("ws");
 const { WebSocketServer } = WebSocket;
 const mime = require("mime");
 const ssri = require("ssri");
+const send = require("send");
 const devip = require("dev-ip");
 const chokidar = require("chokidar");
-const { TemplatePath } = require("@11ty/eleventy-utils");
+const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
 
-const debug = require("debug")("EleventyDevServer");
+const debug = require("debug")("Eleventy:DevServer");
 
 const wrapResponse = require("./server/wrapResponse.js");
+
+if (!globalThis.URLPattern) {
+  require("urlpattern-polyfill");
+}
 
 const DEFAULT_OPTIONS = {
   port: 8080,
@@ -27,7 +32,19 @@ const DEFAULT_OPTIONS = {
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
   aliases: {},          // Aliasing feature
-  index: 'index.html',  // Allow custom index file name
+  indexFileName: "index.html", // Allow custom index file name
+
+  onRequest: {},        // Maps URLPatterns to dynamic callback functions that run on a request from a client.
+
+  // Example:
+  // "/foo/:name": function({ url, pattern, patternGroups }) {
+  //   return {
+  //     headers: {
+  //       "Content-Type": "text/html",
+  //     },
+  //     body: `${url} ${JSON.stringify(patternGroups)}`
+  //   }
+  // }
 
   // Logger (fancier one is injected by Eleventy)
   logger: {
@@ -46,7 +63,7 @@ class EleventyDevServer {
     debug("Creating new Dev Server instance.")
     this.name = name;
     this.normalizeOptions(options);
-    
+
     this.fileCache = {};
     // Directory to serve
     if(!dir) {
@@ -86,10 +103,10 @@ class EleventyDevServer {
       // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
       this._watcher = chokidar.watch(this.options.watch, {
         // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
-  
+
         ignored: ["**/node_modules/**", ".git"],
         ignoreInitial: true,
-  
+
         // same values as Eleventy
         awaitWriteFinish: {
           stabilityThreshold: 150,
@@ -101,7 +118,7 @@ class EleventyDevServer {
         this.logger.log( `File changed: ${path} (skips build)` );
         this.reloadFiles([path]);
       });
-      
+
       this._watcher.on("add", (path) => {
         this.logger.log( `File added: ${path} (skips build)` );
         this.reloadFiles([path]);
@@ -256,7 +273,7 @@ class EleventyDevServer {
       };
     }
 
-    let indexHtmlPath = this.getOutputDirFilePath(url, this.options.index);
+    let indexHtmlPath = this.getOutputDirFilePath(url, this.options.indexFileName);
     let indexHtmlExists = fs.existsSync(indexHtmlPath);
 
     let htmlPath = this.getOutputDirFilePath(url, ".html");
@@ -415,7 +432,49 @@ class EleventyDevServer {
     return res.end(contents);
   }
 
-  eleventyDevServerMiddleware(req, res, next) {
+  async eleventyDevServerMiddleware(req, res, next) {
+    for(let urlPatternString in this.options.onRequest) {
+      let fn = this.options.onRequest[urlPatternString];
+      let p = new URLPattern({ pathname: urlPatternString });
+
+      let fullUrl = this.getServerUrl("localhost", req.url);
+      let match = p.exec(fullUrl);
+
+      let u = new URL(fullUrl);
+
+      if(match) {
+        let result = await fn({
+          url: u,
+          pattern: p,
+          patternGroups: match?.pathname?.groups || {},
+        });
+
+        if(!result && result !== "") {
+          continue;
+        }
+
+        if(typeof result === "string") {
+          return res.end(result);
+        }
+
+        if(isPlainObject(result)) {
+          if(typeof result.status === "number") {
+            res.statusCode = result.status;
+          }
+
+          if(isPlainObject(result.headers)) {
+            for(let name in result.headers) {
+              res.setHeader(name, result.headers[name]);
+            }
+          }
+
+          return res.end(result.body || "");
+        }
+
+        throw new Error(`Invalid return type from \`onRequest\` pattern for ${urlPatternString}: expected string or object.`);
+      }
+    }
+
     if(req.url === `/${this.options.injectedScriptsFolder}/reload-client.js`) {
       if(this.options.liveReload) {
         res.setHeader("Content-Type", mime.getType("js"));
@@ -457,19 +516,24 @@ class EleventyDevServer {
     if(!res._shouldForceEnd) {
       let match = this.mapUrlToFilePath(req.url);
       debug( req.url, match );
-  
+
       if (match) {
+        // Content-Range request, probably Safari trying to stream video
+        if (req.headers.range)  {
+          return send(req, match.filepath).pipe(res);
+        }
+
         if (match.statusCode === 200 && match.filepath) {
           return this.renderFile(match.filepath, res);
         }
-  
+
         // Redirects, usually for trailing slash to .html stuff
         if (match.url) {
           res.statusCode = match.statusCode;
           res.setHeader("Location", match.url);
           return res.end();
         }
-  
+
         let raw404Path = this.getOutputDirFilePath("404.html");
         if(match.statusCode === 404 && this.isOutputFilePathExists(raw404Path)) {
           res.statusCode = match.statusCode;
@@ -603,17 +667,15 @@ class EleventyDevServer {
     this._server.on("listening", (e) => {
       this.setupReloadNotifier();
 
-      let { port } = this._server.address();
-
       let hostsStr = "";
       if(this.options.showAllHosts) {
         // TODO what happens when the cert doesn’t cover non-localhost hosts?
-        let hosts = devip().map(host => `${this._serverProtocol}//${host}:${port}${this.options.pathPrefix} or`);
+        let hosts = devip().map(host => `${this.getServerUrl(host)} or`);
         hostsStr = hosts.join(" ") + " ";
       }
 
       let startBenchmark = ""; // this.start ? ` ready in ${Date.now() - this.start}ms` : "";
-      this.logger.info(`Server at ${hostsStr}${this._serverProtocol}//localhost:${port}${this.options.pathPrefix}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
+      this.logger.info(`Server at ${hostsStr}${this.getServerUrl("localhost")}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
     });
 
     return this._server;
@@ -623,6 +685,19 @@ class EleventyDevServer {
     this.server.listen({
       port,
     });
+  }
+
+  getServerUrl(host, pathname = "") {
+    if(!this._server || !this._serverProtocol) {
+      throw new Error("Access to `serverUrl` property not yet available.");
+    }
+
+    let { port } = this._server.address();
+    // duplicate slashes
+    if(this.options.pathPrefix.endsWith("/") && pathname.startsWith("/")) {
+      pathname = pathname.slice(1);
+    }
+    return `${this._serverProtocol}//${host}:${port}${this.options.pathPrefix}${pathname}`;
   }
 
   async getPort() {
@@ -722,8 +797,8 @@ class EleventyDevServer {
     let urls = [];
     urls.push(path);
 
-    if(path.endsWith("/index.html")) {
-      urls.push(path.slice(0, -1 * this.options.index.length));
+    if(path.endsWith(`/${this.options.indexFileName}`)) {
+      urls.push(path.slice(0, -1 * this.options.indexFileName.length));
     } else if(path.endsWith(".html")) {
       urls.push(path.slice(0, -1 * ".html".length));
     }

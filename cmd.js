@@ -15,7 +15,7 @@ require("please-upgrade-node")(pkg, {
 
 const { Logger, Cli } = require("./cli.js");
 
-const debug = require("debug")("EleventyDevServer:cmd");
+const debug = require("debug")("Eleventy:DevServer");
 
 try {
   const argv = require("minimist")(process.argv.slice(2), {

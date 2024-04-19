@@ -435,9 +435,11 @@ class EleventyDevServer {
   async eleventyDevServerMiddleware(req, res, next) {
     for(let urlPatternString in this.options.onRequest) {
       let fn = this.options.onRequest[urlPatternString];
-      let p = new URLPattern({ pathname: urlPatternString });
+      let fullPath = this.getServerPath(urlPatternString);
+      let p = new URLPattern({ pathname: fullPath });
 
-      let fullUrl = this.getServerUrl("localhost", req.url);
+      // request url should already include pathprefix.
+      let fullUrl = this.getServerUrlRaw("localhost", req.url);
       let match = p.exec(fullUrl);
 
       let u = new URL(fullUrl);
@@ -687,17 +689,25 @@ class EleventyDevServer {
     });
   }
 
-  getServerUrl(host, pathname = "") {
+  getServerPath(pathname) {
+    // duplicate slashes
+    if(this.options.pathPrefix.endsWith("/") && pathname.startsWith("/")) {
+      pathname = pathname.slice(1);
+    }
+    return `${this.options.pathPrefix}${pathname}`;
+  }
+
+  getServerUrlRaw(host, pathname = "", isRaw = true) {
     if(!this._server || !this._serverProtocol) {
       throw new Error("Access to `serverUrl` property not yet available.");
     }
 
     let { port } = this._server.address();
-    // duplicate slashes
-    if(this.options.pathPrefix.endsWith("/") && pathname.startsWith("/")) {
-      pathname = pathname.slice(1);
-    }
-    return `${this._serverProtocol}//${host}:${port}${this.options.pathPrefix}${pathname}`;
+    return `${this._serverProtocol}//${host}:${port}${isRaw ? pathname : this.getServerPath(pathname)}`;
+  }
+
+  getServerUrl(host, pathname = "") {
+    return this.getServerUrlRaw(host, pathname, false);
   }
 
   async getPort() {

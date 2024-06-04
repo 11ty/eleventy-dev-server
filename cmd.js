@@ -18,6 +18,14 @@ const { Logger, Cli } = require("./cli.js");
 const debug = require("debug")("Eleventy:DevServer");
 
 try {
+  const defaults = Cli.getDefaultOptions();
+  for(let key in defaults) {
+    if(key.toLowerCase() !== key) {
+      defaults[key.toLowerCase()] = defaults[key];
+      delete defaults[key];
+    }
+  }
+
   const argv = require("minimist")(process.argv.slice(2), {
     string: [
       "dir",
@@ -29,7 +37,7 @@ try {
       "help",
       "domdiff",
     ],
-    default: Cli.getDefaultOptions(),
+    default: defaults,
     unknown: function (unknownArgument) {
       throw new Error(
         `We don’t know what '${unknownArgument}' is. Use --help to see the list of supported commands.`

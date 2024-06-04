@@ -34,6 +34,15 @@ const DEFAULT_OPTIONS = {
   aliases: {},          // Aliasing feature
   indexFileName: "index.html", // Allow custom index file name
   useCache: false,      // Use a cache for file contents
+  messageOnStart: ({ hosts, startupTime, version, options }) => {
+    let hostsStr = " started";
+    if(Array.isArray(hosts) && hosts.length > 0) {
+      // TODO what happens when the cert doesn’t cover non-localhost hosts?
+      hostsStr = ` at ${hosts.join(" or ")}`;
+    }
+
+    return `Server${hostsStr}${options.showVersion ? ` (v${version})` : ""}`;
+  },
 
   onRequest: {},        // Maps URLPatterns to dynamic callback functions that run on a request from a client.
 
@@ -672,15 +681,26 @@ class EleventyDevServer {
     this._server.on("listening", (e) => {
       this.setupReloadNotifier();
 
-      let hostsStr = "";
+      let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
+      let hosts = new Set();
       if(this.options.showAllHosts) {
-        // TODO what happens when the cert doesn’t cover non-localhost hosts?
-        let hosts = devip().map(host => `${this.getServerUrl(host)} or`);
-        hostsStr = hosts.join(" ") + " ";
+        for(let host of devip()) {
+          hosts.add(this.getServerUrl(host));
+        }
       }
+      hosts.add(this.getServerUrl("localhost"));
 
-      let startBenchmark = ""; // this.start ? ` ready in ${Date.now() - this.start}ms` : "";
-      this.logger.info(`Server at ${hostsStr}${this.getServerUrl("localhost")}${this.options.showVersion ? ` (v${pkg.version})` : ""}${startBenchmark}`);
+      let message = logMessageCallback({
+        hosts: Array.from(hosts),
+        localhostUrl: this.getServerUrl("localhost"),
+        options: this.options,
+        version: pkg.version,
+        startupTime: Date.now() - this.start,
+      });
+
+      if(message) {
+        this.logger.info(message);
+      }
     });
 
     return this._server;

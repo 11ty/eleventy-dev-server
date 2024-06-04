@@ -33,6 +33,7 @@ const DEFAULT_OPTIONS = {
   watch: [],            // Globs to pass to separate dev server chokidar for watching
   aliases: {},          // Aliasing feature
   indexFileName: "index.html", // Allow custom index file name
+  useCache: false,      // Use a cache for file contents
 
   onRequest: {},        // Maps URLPatterns to dynamic callback functions that run on a request from a client.
 
@@ -315,8 +316,8 @@ class EleventyDevServer {
     };
   }
 
-  _getFileContents(localpath, rootDir, useCache = true) {
-    if(this.fileCache[localpath]) {
+  _getFileContents(localpath, rootDir) {
+    if(this.options.useCache && this.fileCache[localpath]) {
       return this.fileCache[localpath];
     }
 
@@ -326,6 +327,7 @@ class EleventyDevServer {
     if(rootDir) {
       searchLocations.push(TemplatePath.absolutePath(rootDir, localpath));
     }
+
     // fallbacks for file:../ installations
     searchLocations.push(TemplatePath.absolutePath(__dirname, localpath));
     searchLocations.push(TemplatePath.absolutePath(__dirname, "../../../", localpath));
@@ -340,7 +342,8 @@ class EleventyDevServer {
     let contents = fs.readFileSync(filepath, {
       encoding: this.options.encoding,
     });
-    if(useCache) {
+
+    if(this.options.useCache) {
       this.fileCache[localpath] = contents;
     }
     return contents;

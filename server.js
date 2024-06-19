@@ -435,6 +435,7 @@ class EleventyDevServer {
     }
 
     res.setHeader("Content-Type", contentType);
+    res.setHeader("Access-Control-Allow-Origin", '*');
 
     if (contentType.startsWith("text/html")) {
       // the string is important here, wrapResponse expects strings internally for HTML content (for now)

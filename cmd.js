@@ -67,9 +67,9 @@ try {
       domDiff: argv.domdiff,
     });
 
-    process.on("SIGINT", () => {
-      cli.close();
-      process.exit();
+    process.on("SIGINT", async () => {
+      await cli.close();
+      process.exitCode = 0;
     });
   }
 } catch (e) {

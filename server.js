@@ -790,21 +790,43 @@ class EleventyDevServer {
     }
   }
 
-  close() {
+  // Helper for promisifying close methods with callbacks, like http.Server or ws.WebSocketServer.
+  _closeServer(server) {
+    return new Promise((resolve, reject) => {
+      server.close(err => {
+        if (err) {
+          reject(err);
+        }
+        resolve();
+      });
+    });
+  }
+
+  async close() {
+    // Prevent multiple invocations.
+    if (this?._isClosing) {
+      return;
+    }
+    this._isClosing = true;
+
     // TODO would be awesome to set a delayed redirect when port changed to redirect to new _server_
     this.sendUpdateNotification({
       type: "eleventy.status",
       status: "disconnected",
     });
 
-    if(this.server) {
-      this.server.close();
-    }
     if(this.updateServer) {
-      this.updateServer.close();
+      // Close all existing WS connections.
+      this.updateServer?.clients.forEach(socket => socket.close());
+      await this._closeServer(this.updateServer);
     }
+
+    if(this._server?.listening) {
+      await this._closeServer(this.server);
+    }
+
     if(this._watcher) {
-      this._watcher.close();
+      await this._watcher.close();
       delete this._watcher;
     }
   }

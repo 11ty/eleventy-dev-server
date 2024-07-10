@@ -81,7 +81,7 @@ Arguments:
 
   close() {
     if(this.server) {
-      this.server.close();
+      return this.server.close();
     }
   }
 }

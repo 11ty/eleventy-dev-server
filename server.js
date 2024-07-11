@@ -628,6 +628,17 @@ class EleventyDevServer {
     await first();
   }
 
+  getHosts() {
+    let hosts = new Set();
+    if(this.options.showAllHosts) {
+      for(let host of devip()) {
+        hosts.add(this.getServerUrl(host));
+      }
+    }
+    hosts.add(this.getServerUrl("localhost"));
+    return Array.from(hosts);
+  }
+
   get server() {
     if (this._server) {
       return this._server;
@@ -683,16 +694,9 @@ class EleventyDevServer {
       this.setupReloadNotifier();
 
       let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
-      let hosts = new Set();
-      if(this.options.showAllHosts) {
-        for(let host of devip()) {
-          hosts.add(this.getServerUrl(host));
-        }
-      }
-      hosts.add(this.getServerUrl("localhost"));
-
+      let hosts = this.getHosts();
       let message = logMessageCallback({
-        hosts: Array.from(hosts),
+        hosts,
         localhostUrl: this.getServerUrl("localhost"),
         options: this.options,
         version: pkg.version,

@@ -1,6 +1,6 @@
-const pkg = require("./package.json");
-const path = require("path");
-const fs = require("fs");
+const path = require("node:path");
+const fs = require("node:fs");
+
 const finalhandler = require("finalhandler");
 const WebSocket = require("ws");
 const { WebSocketServer } = WebSocket;
@@ -13,6 +13,7 @@ const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
 
 const debug = require("debug")("Eleventy:DevServer");
 
+const pkg = require("./package.json");
 const wrapResponse = require("./server/wrapResponse.js");
 
 if (!globalThis.URLPattern) {

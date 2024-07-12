@@ -834,6 +834,8 @@ class EleventyDevServer {
       await this._watcher.close();
       delete this._watcher;
     }
+
+    delete this._isClosing;
   }
 
   sendError({ error }) {

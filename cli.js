@@ -1,6 +1,3 @@
-const chokidar = require("chokidar");
-const fs = require("fs");
-
 const pkg = require("./package.json");
 const EleventyDevServer = require("./server.js");
 
@@ -68,7 +65,7 @@ Arguments:
       logger: Logger,
       domDiff: this.options.domDiff,
 
-      // CLI watches all files in the folder by default 
+      // CLI watches all files in the folder by default
       // this is different from Eleventy usage!
       watch: [ this.options.input ],
     });

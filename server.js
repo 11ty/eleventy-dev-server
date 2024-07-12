@@ -1,6 +1,6 @@
-const pkg = require("./package.json");
-const path = require("path");
-const fs = require("fs");
+const path = require("node:path");
+const fs = require("node:fs");
+
 const finalhandler = require("finalhandler");
 const WebSocket = require("ws");
 const { WebSocketServer } = WebSocket;
@@ -13,6 +13,7 @@ const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
 
 const debug = require("debug")("Eleventy:DevServer");
 
+const pkg = require("./package.json");
 const wrapResponse = require("./server/wrapResponse.js");
 
 if (!globalThis.URLPattern) {
@@ -627,6 +628,17 @@ class EleventyDevServer {
     await first();
   }
 
+  getHosts() {
+    let hosts = new Set();
+    if(this.options.showAllHosts) {
+      for(let host of devip()) {
+        hosts.add(this.getServerUrl(host));
+      }
+    }
+    hosts.add(this.getServerUrl("localhost"));
+    return Array.from(hosts);
+  }
+
   get server() {
     if (this._server) {
       return this._server;
@@ -682,16 +694,9 @@ class EleventyDevServer {
       this.setupReloadNotifier();
 
       let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
-      let hosts = new Set();
-      if(this.options.showAllHosts) {
-        for(let host of devip()) {
-          hosts.add(this.getServerUrl(host));
-        }
-      }
-      hosts.add(this.getServerUrl("localhost"));
-
+      let hosts = this.getHosts();
       let message = logMessageCallback({
-        hosts: Array.from(hosts),
+        hosts,
         localhostUrl: this.getServerUrl("localhost"),
         options: this.options,
         version: pkg.version,

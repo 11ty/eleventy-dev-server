@@ -6,7 +6,7 @@ function testNormalizeFilePath(filepath) {
   return filepath.split("/").join(path.sep);
 }
 
-test("Url mappings for resource/index.html", t => {
+test("Url mappings for resource/index.html", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
   t.deepEqual(server.mapUrlToFilePath("/route1/"), {
@@ -27,11 +27,11 @@ test("Url mappings for resource/index.html", t => {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route1/index.html")
   });
-
-  server.close();
+  
+  await server.close();  
 });
 
-test("Url mappings for resource.html", t => {
+test("Url mappings for resource.html", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
   t.deepEqual(server.mapUrlToFilePath("/route2/"), {
@@ -53,10 +53,10 @@ test("Url mappings for resource.html", t => {
     filepath: testNormalizeFilePath("test/stubs/route2.html",)
   });
 
-  server.close();
+  await server.close();
 });
 
-test("Url mappings for resource.html and resource/index.html", t => {
+test("Url mappings for resource.html and resource/index.html", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
   // Production mismatch warning: Netlify 301 redirects to /route3 here
@@ -80,10 +80,10 @@ test("Url mappings for resource.html and resource/index.html", t => {
     filepath: testNormalizeFilePath("test/stubs/route3.html",)
   });
 
-  server.close();
+  await server.close();
 });
 
-test("Url mappings for missing resource", t => {
+test("Url mappings for missing resource", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
   // 404s
@@ -91,10 +91,10 @@ test("Url mappings for missing resource", t => {
     statusCode: 404
   });
 
-  server.close();
+  await server.close();
 });
 
-test("Url mapping for a filename with a space in it", t => {
+test("Url mapping for a filename with a space in it", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/");
 
   t.deepEqual(server.mapUrlToFilePath("/route space.html"), {
@@ -102,7 +102,7 @@ test("Url mapping for a filename with a space in it", t => {
     filepath: testNormalizeFilePath("test/stubs/route space.html",)
   });
 
-  server.close();
+  await server.close();
 });
 
 test("matchPassthroughAlias", async (t) => {
@@ -131,6 +131,8 @@ test("matchPassthroughAlias", async (t) => {
   
   // Map entry exists, file exists
   t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./test/stubs/with-css/style.css");
+
+  await server.close();
 });
 
 
@@ -155,7 +157,7 @@ test("pathPrefix matching", async (t) => {
     url: '/pathprefix/',
   });
 
-  server.close();
+  await server.close();
 });
 
 test("pathPrefix without leading slash", async (t) => {
@@ -179,7 +181,7 @@ test("pathPrefix without leading slash", async (t) => {
     url: '/pathprefix/',
   });
 
-  server.close();
+  await server.close();
 });
 
 test("pathPrefix without trailing slash", async (t) => {
@@ -203,7 +205,7 @@ test("pathPrefix without trailing slash", async (t) => {
     url: '/pathprefix/',
   });
 
-  server.close();
+  await server.close();
 });
 
 test("pathPrefix without leading or trailing slash", async (t) => {
@@ -227,7 +229,7 @@ test("pathPrefix without leading or trailing slash", async (t) => {
     url: '/pathprefix/',
   });
 
-  server.close();
+  await server.close();
 });
 
 test("indexFileName option: serve custom index when provided", async (t) => {
@@ -244,7 +246,7 @@ test("indexFileName option: serve custom index when provided", async (t) => {
     filepath: testNormalizeFilePath("test/stubs/route1/custom-index.html"),
   });
 
-  server.close();
+  await server.close();
 });
 
 test("indexFileName option: return 404 when custom index file doesn't exist", async (t) => {
@@ -254,5 +256,5 @@ test("indexFileName option: return 404 when custom index file doesn't exist", as
     statusCode: 404,
   });
 
-  server.close();
+  await server.close();
 });

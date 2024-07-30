@@ -75,7 +75,7 @@ async function fetchHeadersForRequest(t, server, path, extras) {
   })
 }
 
-test("Standard request", async t => {
+test("Standard request", async (t) => {
   let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
   server.serve(8100);
 
@@ -83,7 +83,7 @@ test("Standard request", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("SAMPLE"));
 
-  server.close();
+  await server.close();  
 });
 
 test("One sync middleware", async t => {
@@ -101,7 +101,7 @@ test("One sync middleware", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("SAMPLE"));
 
-  server.close();
+  await server.close();
 });
 
 test("Two sync middleware", async t => {
@@ -121,7 +121,7 @@ test("Two sync middleware", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("SAMPLE"));
 
-  server.close();
+  await server.close();
 });
 
 test("One async middleware", async t => {
@@ -138,7 +138,7 @@ test("One async middleware", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("SAMPLE"));
 
-  server.close();
+  await server.close();
 });
 
 test("Two async middleware", async t => {
@@ -158,7 +158,7 @@ test("Two async middleware", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("SAMPLE"));
 
-  server.close();
+  await server.close();
 });
 
 test("Async middleware that writes", async t => {
@@ -186,7 +186,7 @@ test("Async middleware that writes", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("Injected"));
 
-  server.close();
+  await server.close();
 });
 
 test("Second async middleware that writes", async t => {
@@ -223,7 +223,7 @@ test("Second async middleware that writes", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("Injected"));
 
-  server.close();
+  await server.close();
 });
 
 
@@ -250,7 +250,7 @@ test("Second middleware that consumes first middleware response body, issue #29"
   t.true(data.includes("<script "));
   t.true(data.startsWith("First Second "));
 
-  server.close();
+  await server.close();
 });
 
 test("Two middlewares, end() in the first, skip the second", async t => {
@@ -276,7 +276,7 @@ test("Two middlewares, end() in the first, skip the second", async t => {
   t.true(data.startsWith("First "));
   t.true(!data.startsWith("First Second "));
 
-  server.close();
+  await server.close();
 });
 
 test("Fun unicode paths", async t => {
@@ -287,7 +287,7 @@ test("Fun unicode paths", async t => {
   t.true(data.includes("<script "));
   t.true(data.startsWith("This is a test"));
 
-  server.close();
+  await server.close();
 });
 
 test("Content-Type header via middleware", async t => {
@@ -307,7 +307,7 @@ test("Content-Type header via middleware", async t => {
   let data = await fetchHeadersForRequest(t, server, encodeURI(`/index.php`));
   t.true(data['content-type'] === 'text/html; charset=utf-8');
 
-  server.close();
+  await server.close();
 });
 
 test("Content-Range request", async (t) => {
@@ -325,7 +325,7 @@ test("Content-Range request", async (t) => {
   t.true("content-range" in data);
   t.true(data["content-range"].startsWith("bytes 0-48/"));
 
-  server.close();
+  await server.close();
 });
 
 test("Standard request does not include range headers", async (t) => {
@@ -340,5 +340,5 @@ test("Standard request does not include range headers", async (t) => {
   t.false("accept-ranges" in data);
   t.false("content-range" in data);
 
-  server.close();
+  await server.close();
 });

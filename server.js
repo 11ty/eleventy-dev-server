@@ -35,6 +35,7 @@ const DEFAULT_OPTIONS = {
   aliases: {},          // Aliasing feature
   indexFileName: "index.html", // Allow custom index file name
   useCache: false,      // Use a cache for file contents
+  headers: {},          // Set default response headers
   messageOnStart: ({ hosts, startupTime, version, options }) => {
     let hostsStr = " started";
     if(Array.isArray(hosts) && hosts.length > 0) {
@@ -430,6 +431,10 @@ class EleventyDevServer {
   renderFile(filepath, res) {
     let contents = fs.readFileSync(filepath);
     let contentType = this.getFileContentType(filepath, res);
+
+    for(const [key, value] of Object.entries(this.options.headers)){
+      res.setHeader(key, value);
+    }
 
     if (!contentType) {
       return res.end(contents);

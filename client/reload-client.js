@@ -246,6 +246,17 @@ class EleventyReload {
                       window.location.reload();
                     }
                   },
+                  onElUpdated: function(node) {
+                    // Re-attach custom elements
+                    if(customElements.get(node.tagName.toLowerCase())) {
+                      let placeholder = document.createElement("div");
+                      node.replaceWith(placeholder);
+                      requestAnimationFrame(() => {
+                        placeholder.replaceWith(node);
+                        placeholder = undefined;
+                      });
+                    }
+                  }
                 });
 
                 Util.matchRootAttributes(template.content);

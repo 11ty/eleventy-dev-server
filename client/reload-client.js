@@ -225,13 +225,19 @@ class EleventyReload {
                   },
                   addChild: function(parent, child) {
                     // Declarative Shadow DOM https://github.com/11ty/eleventy-dev-server/issues/90
-                    if(child.nodeName === "TEMPLATE" && child.hasAttribute("shadowrootmode") && parent.shadowRoot) {
-                      for(let oldChild of parent.shadowRoot?.childNodes || []) {
-                        oldChild.remove();
+                    if(child.nodeName === "TEMPLATE" && child.hasAttribute("shadowrootmode")) {
+                      let root = parent.shadowRoot;
+                      if(root) {
+                        // remove all shadow root children
+                        while(root.firstChild) {
+                          root.removeChild(root.firstChild);
+                        }
                       }
                       for(let newChild of child.content.childNodes) {
-                        parent.shadowRoot.appendChild(newChild);
+                        root.appendChild(newChild);
                       }
+                    } else {
+                      parent.appendChild(child);
                     }
                   },
                   onNodeAdded: function (node) {

@@ -55,10 +55,10 @@ class Util {
 
     let oldWithoutHref = from.cloneNode();
     let newWithoutHref = to.cloneNode();
-    
+
     oldWithoutHref.removeAttribute("href");
     newWithoutHref.removeAttribute("href");
-    
+
     // if all other attributes besides href match
     if(!oldWithoutHref.isEqualNode(newWithoutHref)) {
       return false;
@@ -161,7 +161,7 @@ class EleventyReload {
       // no reconnection when the connect is already open
       this.removeReconnectListeners();
     });
-    
+
     socket.addEventListener("close", () => {
       this.connectionMessageShown = false;
       this.addReconnectListeners();
@@ -218,6 +218,17 @@ class EleventyReload {
                     }
 
                     return true;
+                  },
+                  addChild: function(parent, child) {
+                    // Declarative Shadow DOM https://github.com/11ty/eleventy-dev-server/issues/90
+                    if(child.nodeName === "TEMPLATE" && child.hasAttribute("shadowrootmode") && parent.shadowRoot) {
+                      for(let oldChild of parent.shadowRoot?.childNodes || []) {
+                        oldChild.remove();
+                      }
+                      for(let newChild of child.content.childNodes) {
+                        parent.shadowRoot.appendChild(newChild);
+                      }
+                    }
                   },
                   onNodeAdded: function (node) {
                     if (node.nodeName === 'SCRIPT') {

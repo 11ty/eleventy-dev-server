@@ -85,7 +85,7 @@ class Util {
   static runScript(source, target) {
     let script = document.createElement('script');
 
-    //copy over the attributes
+    // copy over the attributes
     for(let attr of [...source.attributes]) {
       script.setAttribute(attr.nodeName ,attr.nodeValue);
     }
@@ -203,7 +203,11 @@ class EleventyReload {
                   childrenOnly: true,
                   onBeforeElUpdated: function (fromEl, toEl) {
                     if (fromEl.nodeName === "SCRIPT" && toEl.nodeName === "SCRIPT") {
-                      Util.runScript(toEl, fromEl);
+                      if(toEl.innerHTML !== fromEl.innerHTML) {
+                        Util.log(`JavaScript modified, reload initiated.`);
+                        window.location.reload();
+                      }
+
                       return false;
                     }
 
@@ -232,7 +236,8 @@ class EleventyReload {
                   },
                   onNodeAdded: function (node) {
                     if (node.nodeName === 'SCRIPT') {
-                      Util.runScript(node);
+                      Util.log(`JavaScript added, reload initiated.`);
+                      window.location.reload();
                     }
                   },
                 });

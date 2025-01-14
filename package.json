@@ -38,9 +38,9 @@
   "bugs": "https://github.com/11ty/eleventy-dev-server/issues",
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
-    "@11ty/eleventy-utils": "^1.0.3",
+    "@11ty/eleventy-utils": "^2.0.0",
     "chokidar": "^3.6.0",
-    "debug": "^4.3.7",
+    "debug": "^4.4.0",
     "dev-ip": "^1.0.1",
     "finalhandler": "^1.3.1",
     "mime": "^3.0.0",
@@ -53,6 +53,6 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "ava": "^6.1.3"
+    "ava": "^6.2.0"
   }
 }

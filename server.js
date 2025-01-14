@@ -538,12 +538,12 @@ class EleventyDevServer {
       debug( req.url, match );
 
       if (match) {
-        // Content-Range request, probably Safari trying to stream video
-        if (req.headers.range)  {
-          return send(req, match.filepath).pipe(res);
-        }
-
         if (match.statusCode === 200 && match.filepath) {
+          // Content-Range request, probably Safari trying to stream video
+          if (req.headers.range)  {
+            return send(req, match.filepath).pipe(res);
+          }
+
           return this.renderFile(match.filepath, res);
         }
 

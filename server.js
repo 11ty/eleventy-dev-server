@@ -7,7 +7,6 @@ const { WebSocketServer } = WebSocket;
 const mime = require("mime");
 const ssri = require("ssri");
 const send = require("send");
-const devip = require("dev-ip");
 const chokidar = require("chokidar");
 const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
 
@@ -15,6 +14,7 @@ const debug = require("debug")("Eleventy:DevServer");
 
 const pkg = require("./package.json");
 const wrapResponse = require("./server/wrapResponse.js");
+const ipAddress = require("./server/ipAddress.js");
 
 if (!globalThis.URLPattern) {
   require("urlpattern-polyfill");
@@ -647,7 +647,7 @@ class EleventyDevServer {
   getHosts() {
     let hosts = new Set();
     if(this.options.showAllHosts) {
-      for(let host of devip()) {
+      for(let host of ipAddress()) {
         hosts.add(this.getServerUrl(host));
       }
     }

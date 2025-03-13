@@ -67,6 +67,10 @@ const DEFAULT_OPTIONS = {
 }
 
 class EleventyDevServer {
+  #watcher;
+  #serverClosing;
+  #serverState;
+
   static getServer(...args) {
     return new EleventyDevServer(...args);
   }
@@ -83,10 +87,7 @@ class EleventyDevServer {
     }
     this.dir = dir;
     this.logger = this.options.logger;
-
-    if(this.options.watch.length > 0) {
-      this.getWatcher();
-    }
+    this.getWatcher();
   }
 
   normalizeOptions(options = {}) {
@@ -110,42 +111,46 @@ class EleventyDevServer {
   }
 
   get watcher() {
-    if(!this._watcher) {
-      debug("Watching %O", this.options.watch);
-      // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
-      this._watcher = chokidar.watch(this.options.watch, {
-        // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
-
-        ignored: ["**/node_modules/**", ".git"],
-        ignoreInitial: true,
-
-        // same values as Eleventy
-        awaitWriteFinish: {
-          stabilityThreshold: 150,
-          pollInterval: 25,
-        },
-      });
-
-      this._watcher.on("change", (path) => {
-        this.logger.log( `File changed: ${path} (skips build)` );
-        this.reloadFiles([path]);
-      });
-
-      this._watcher.on("add", (path) => {
-        this.logger.log( `File added: ${path} (skips build)` );
-        this.reloadFiles([path]);
-      });
+    if(this.#watcher) {
+      return this.#watcher;
     }
 
-    return this._watcher;
+    debug("Watching %O", this.options.watch);
+    // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
+    this.#watcher = chokidar.watch(this.options.watch, {
+      // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
+
+      ignored: ["**/node_modules/**", ".git"],
+      ignoreInitial: true,
+
+      // same values as Eleventy
+      awaitWriteFinish: {
+        stabilityThreshold: 150,
+        pollInterval: 25,
+      },
+    });
+
+    this.#watcher.on("change", (path) => {
+      this.logger.log( `File changed: ${path} (skips build)` );
+      this.reloadFiles([path]);
+    });
+
+    this.#watcher.on("add", (path) => {
+      this.logger.log( `File added: ${path} (skips build)` );
+      this.reloadFiles([path]);
+    });
   }
 
   getWatcher() {
-    return this.watcher;
+    // only initialize watcher if watcher via getWatcher if has targets
+    // this.watcher in watchFiles() is a manual workaround
+    if(this.options.watch.length > 0) {
+      return this.watcher;
+    }
   }
 
   watchFiles(files) {
-    if(Array.isArray(files)) {
+    if(Array.isArray(files) && files.length > 0) {
       files = files.map(entry => TemplatePath.stripLeadingDotSlash(entry));
 
       debug("Also watching %O", files);
@@ -451,6 +456,10 @@ class EleventyDevServer {
   }
 
   async eleventyDevServerMiddleware(req, res, next) {
+    if(this.#serverState === "CLOSING") {
+      return res.end("");
+    }
+
     for(let urlPatternString in this.options.onRequest) {
       let fn = this.options.onRequest[urlPatternString];
       let fullPath = this.getServerPath(urlPatternString);
@@ -732,11 +741,15 @@ class EleventyDevServer {
 
   getServerUrlRaw(host, pathname = "", isRaw = true) {
     if(!this._server || !this._serverProtocol) {
-      throw new Error("Access to `serverUrl` property not yet available.");
+      throw new Error("Access to server url not yet available.");
     }
 
-    let { port } = this._server.address();
-    return `${this._serverProtocol}//${host}:${port}${isRaw ? pathname : this.getServerPath(pathname)}`;
+    let address = this._server.address();
+    if(!address?.port) {
+      throw new Error("Access to server port not yet available.");
+    }
+
+    return `${this._serverProtocol}//${host}:${address.port}${isRaw ? pathname : this.getServerPath(pathname)}`;
   }
 
   getServerUrl(host, pathname = "") {
@@ -801,7 +814,7 @@ class EleventyDevServer {
   }
 
   // Helper for promisifying close methods with callbacks, like http.Server or ws.WebSocketServer.
-  _closeServer(server) {
+  async _closeServer(server) {
     return new Promise((resolve, reject) => {
       server.close(err => {
         if (err) {
@@ -809,15 +822,20 @@ class EleventyDevServer {
         }
         resolve();
       });
+
+      // Note: this method won’t exist for updateServer
+      if("closeAllConnections" in server) {
+        // Node 18.2+
+        server.closeAllConnections();
+      }
     });
   }
 
   async close() {
     // Prevent multiple invocations.
-    if (this?._isClosing) {
-      return;
+    if (this.#serverClosing) {
+      return this.#serverClosing;
     }
-    this._isClosing = true;
 
     // TODO would be awesome to set a delayed redirect when port changed to redirect to new _server_
     this.sendUpdateNotification({
@@ -825,22 +843,30 @@ class EleventyDevServer {
       status: "disconnected",
     });
 
+    let promises = []
     if(this.updateServer) {
       // Close all existing WS connections.
       this.updateServer?.clients.forEach(socket => socket.close());
-      await this._closeServer(this.updateServer);
+      promises.push(this._closeServer(this.updateServer));
     }
 
     if(this._server?.listening) {
-      await this._closeServer(this.server);
+      promises.push(this._closeServer(this.server));
     }
 
-    if(this._watcher) {
-      await this._watcher.close();
-      delete this._watcher;
+    if(this.#watcher) {
+      promises.push(this.#watcher.close());
+      this.#watcher = undefined;
     }
 
-    delete this._isClosing;
+    this.#serverClosing = Promise.all(promises).then(() => {
+      this.#serverState = "CLOSED";
+      this.#serverClosing = undefined;
+    });
+
+    this.#serverState = "CLOSING";
+
+    return this.#serverClosing;
   }
 
   sendError({ error }) {

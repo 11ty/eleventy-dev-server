@@ -38,7 +38,7 @@
   "bugs": "https://github.com/11ty/eleventy-dev-server/issues",
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
-    "@11ty/eleventy-utils": "^2.0.0",
+    "@11ty/eleventy-utils": "^2.0.1",
     "chokidar": "^3.6.0",
     "debug": "^4.4.0",
     "dev-ip": "^1.0.1",
@@ -50,7 +50,7 @@
     "send": "^1.1.0",
     "ssri": "^11.0.0",
     "urlpattern-polyfill": "^10.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "ava": "^6.2.0"

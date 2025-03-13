@@ -96,9 +96,10 @@ function wrapResponse(resp, transformHtml) {
       // Only transform HTML
       // Note the “setHeader versus writeHead” note on https://nodejs.org/api/http.html#responsewriteheadstatuscode-statusmessage-headers
       let contentType = this._contentType || getContentType(this.getHeaders());
-      if(contentType && contentType.startsWith("text/html")) {
+      if(contentType?.startsWith("text/html")) {
         if(this._wrappedTransformHtml && typeof this._wrappedTransformHtml === "function") {
           result = this._wrappedTransformHtml(result);
+          // uncompressed size: https://github.com/w3c/ServiceWorker/issues/339
           this.setHeader("Content-Length", Buffer.byteLength(result));
         }
       }
@@ -111,7 +112,7 @@ function wrapResponse(resp, transformHtml) {
       this._wrappedOriginalWrite(result, encoding)
       return this._wrappedOriginalEnd(callback);
     } else {
-      // Buffers
+      // Buffer or Uint8Array
       for(let headers of this._wrappedHeaders) {
         this._wrappedOriginalWriteHead(...headers);
       }

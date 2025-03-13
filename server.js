@@ -496,21 +496,36 @@ class EleventyDevServer {
           return res.end(result);
         }
 
-        if(isPlainObject(result)) {
+        if(isPlainObject(result) || result instanceof Response) {
           if(typeof result.status === "number") {
             res.statusCode = result.status;
           }
 
-          if(isPlainObject(result.headers)) {
-            for(let name in result.headers) {
-              res.setHeader(name, result.headers[name]);
+          if(result.headers instanceof Headers) {
+            for(let [key, value] of result.headers.entries()) {
+              res.setHeader(key, value);
             }
+          } else if(isPlainObject(result.headers)) {
+            for(let key of Object.keys(result.headers)) {
+              res.setHeader(key, result.headers[key]);
+            }
+          }
+
+          if(result instanceof Response) {
+            // no gzip/br compression here, uncompressed from fetch https://github.com/w3c/ServiceWorker/issues/339
+            res.removeHeader("content-encoding");
+
+            let arrayBuffer = await result.arrayBuffer();
+            res.setHeader("content-length", arrayBuffer.byteLength);
+
+            let buffer = Buffer.from(arrayBuffer);
+            return res.end(buffer);
           }
 
           return res.end(result.body || "");
         }
 
-        throw new Error(`Invalid return type from \`onRequest\` pattern for ${urlPatternString}: expected string or object.`);
+        throw new Error(`Invalid return type from \`onRequest\` pattern for ${urlPatternString}: expected string, object literal, or Response instance.`);
       }
     }
 

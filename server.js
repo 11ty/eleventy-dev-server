@@ -71,6 +71,8 @@ class EleventyDevServer {
   #watcher;
   #serverClosing;
   #serverState;
+  #readyPromise;
+  #readyResolve;
 
   static getServer(...args) {
     return new EleventyDevServer(...args);
@@ -89,6 +91,10 @@ class EleventyDevServer {
     this.dir = dir;
     this.logger = this.options.logger;
     this.getWatcher();
+
+    this.#readyPromise = new Promise((resolve) => {
+      this.#readyResolve = resolve;
+    })
   }
 
   normalizeOptions(options = {}) {
@@ -745,9 +751,15 @@ class EleventyDevServer {
       if(message) {
         this.logger.info(message);
       }
+
+      this.#readyResolve();
     });
 
     return this._server;
+  }
+
+  async ready() {
+    return this.#readyPromise;
   }
 
   _serverListen(port) {
@@ -954,7 +966,7 @@ class EleventyDevServer {
 
     let subtype;
     if(!files.some((entry) => !entry.endsWith(".css"))) {
-      // all css changes
+      // all changes are css changes
       subtype = "css";
     }
 
@@ -979,7 +991,7 @@ class EleventyDevServer {
     });
   }
 
-  reload(event) {
+  reload(event = {}) {
     let { subtype, files, build } = event;
     if (build?.templates) {
       build.templates = build.templates

@@ -96,6 +96,112 @@ class Util {
 }
 
 class EleventyReload {
+  static reloadTypes = {
+    css: () => {
+      for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
+        if (link.href) {
+          let url = new URL(link.href);
+          url.searchParams.set("_11ty", Date.now());
+          link.href = url.toString();
+        }
+      }
+
+      Util.log(`CSS updated without page reload.`);
+    },
+    default: async (files, build = {}) => {
+      let morphed = false;
+
+      try {
+        if((build.templates || []).length > 0) {
+          // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
+          const { default: morphdom } = await import(`./morphdom.js`);
+
+          // { url, inputPath, content }
+          for (let template of build?.templates || []) {
+            if (template.url === document.location.pathname) {
+              // Importantly, if this does not match but is still relevant (layout/include/etc), a full reload happens below. This could be improved.
+              if ((files || []).includes(template.inputPath)) {
+                // Notable limitation: this won’t re-run script elements or JavaScript page lifecycle events (load/DOMContentLoaded)
+                morphed = true;
+
+                morphdom(document.documentElement, template.content, {
+                  childrenOnly: true,
+                  onBeforeElUpdated: function (fromEl, toEl) {
+                    if (fromEl.nodeName === "SCRIPT" && toEl.nodeName === "SCRIPT") {
+                      if(toEl.innerHTML !== fromEl.innerHTML) {
+                        Util.log(`JavaScript modified, reload initiated.`);
+                        window.location.reload();
+                      }
+
+                      return false;
+                    }
+
+                    // Speed-up trick from morphdom docs
+                    // https://dom.spec.whatwg.org/#concept-node-equals
+                    if (fromEl.isEqualNode(toEl)) {
+                      return false;
+                    }
+
+                    if(Util.isEleventyLinkNodeMatch(fromEl, toEl)) {
+                      return false;
+                    }
+
+                    return true;
+                  },
+                  addChild: function(parent, child) {
+                    // Declarative Shadow DOM https://github.com/11ty/eleventy-dev-server/issues/90
+                    if(child.nodeName === "TEMPLATE" && child.hasAttribute("shadowrootmode")) {
+                      let root = parent.shadowRoot;
+                      if(root) {
+                        // remove all shadow root children
+                        while(root.firstChild) {
+                          root.removeChild(root.firstChild);
+                        }
+                      }
+                      for(let newChild of child.content.childNodes) {
+                        root.appendChild(newChild);
+                      }
+                    } else {
+                      parent.appendChild(child);
+                    }
+                  },
+                  onNodeAdded: function (node) {
+                    if (node.nodeName === 'SCRIPT') {
+                      Util.log(`JavaScript added, reload initiated.`);
+                      window.location.reload();
+                    }
+                  },
+                  onElUpdated: function(node) {
+                    // Re-attach custom elements
+                    if(customElements.get(node.tagName.toLowerCase())) {
+                      let placeholder = document.createElement("div");
+                      node.replaceWith(placeholder);
+                      requestAnimationFrame(() => {
+                        placeholder.replaceWith(node);
+                        placeholder = undefined;
+                      });
+                    }
+                  }
+                });
+
+                Util.matchRootAttributes(template.content);
+                Util.log(`HTML delta applied without page reload.`);
+              }
+              break;
+            }
+          }
+        }
+      } catch(e) {
+        Util.error( "Morphdom error", e );
+      }
+
+      if (!morphed) {
+        Util.log(`Page reload initiated.`);
+        window.location.reload();
+      }
+    }
+  }
+
   constructor() {
     this.connectionMessageShown = false;
     this.reconnectEventCallback = this.reconnect.bind(this);
@@ -181,107 +287,11 @@ class EleventyReload {
   }
 
   async onreload({ subtype, files, build }) {
-    if (subtype === "css") {
-      for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
-        if (link.href) {
-          let url = new URL(link.href);
-          url.searchParams.set("_11ty", Date.now());
-          link.href = url.toString();
-        }
-      }
-      Util.log(`CSS updated without page reload.`);
-    } else {
-      let morphed = false;
-
-      try {
-        if((build.templates || []).length > 0) {
-          // Important: using `./` in `./morphdom.js` allows the special `.11ty` folder to be changed upstream
-          const { default: morphdom } = await import(`./morphdom.js`);
-
-          // { url, inputPath, content }
-          for (let template of build.templates || []) {
-            if (template.url === document.location.pathname) {
-              // Importantly, if this does not match but is still relevant (layout/include/etc), a full reload happens below. This could be improved.
-              if ((files || []).includes(template.inputPath)) {
-                // Notable limitation: this won’t re-run script elements or JavaScript page lifecycle events (load/DOMContentLoaded)
-                morphed = true;
-
-                morphdom(document.documentElement, template.content, {
-                  childrenOnly: true,
-                  onBeforeElUpdated: function (fromEl, toEl) {
-                    if (fromEl.nodeName === "SCRIPT" && toEl.nodeName === "SCRIPT") {
-                      if(toEl.innerHTML !== fromEl.innerHTML) {
-                        Util.log(`JavaScript modified, reload initiated.`);
-                        window.location.reload();
-                      }
-
-                      return false;
-                    }
-
-                    // Speed-up trick from morphdom docs
-                    // https://dom.spec.whatwg.org/#concept-node-equals
-                    if (fromEl.isEqualNode(toEl)) {
-                      return false;
-                    }
-
-                    if(Util.isEleventyLinkNodeMatch(fromEl, toEl)) {
-                      return false;
-                    }
-
-                    return true;
-                  },
-                  addChild: function(parent, child) {
-                    // Declarative Shadow DOM https://github.com/11ty/eleventy-dev-server/issues/90
-                    if(child.nodeName === "TEMPLATE" && child.hasAttribute("shadowrootmode")) {
-                      let root = parent.shadowRoot;
-                      if(root) {
-                        // remove all shadow root children
-                        while(root.firstChild) {
-                          root.removeChild(root.firstChild);
-                        }
-                      }
-                      for(let newChild of child.content.childNodes) {
-                        root.appendChild(newChild);
-                      }
-                    } else {
-                      parent.appendChild(child);
-                    }
-                  },
-                  onNodeAdded: function (node) {
-                    if (node.nodeName === 'SCRIPT') {
-                      Util.log(`JavaScript added, reload initiated.`);
-                      window.location.reload();
-                    }
-                  },
-                  onElUpdated: function(node) {
-                    // Re-attach custom elements
-                    if(customElements.get(node.tagName.toLowerCase())) {
-                      let placeholder = document.createElement("div");
-                      node.replaceWith(placeholder);
-                      requestAnimationFrame(() => {
-                        placeholder.replaceWith(node);
-                        placeholder = undefined;
-                      });
-                    }
-                  }
-                });
-
-                Util.matchRootAttributes(template.content);
-                Util.log(`HTML delta applied without page reload.`);
-              }
-              break;
-            }
-          }
-        }
-      } catch(e) {
-        Util.error( "Morphdom error", e );
-      }
-
-      if (!morphed) {
-        Util.log(`Page reload initiated.`);
-        window.location.reload();
-      }
+    if(!EleventyReload.reloadTypes[subtype]) {
+      subtype = "default";
     }
+
+    await EleventyReload.reloadTypes[subtype](files, build);
   }
 
   addReconnectListeners() {

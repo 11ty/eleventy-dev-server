@@ -139,6 +139,8 @@ class EleventyDevServer {
       this.logger.log( `File added: ${path} (skips build)` );
       this.reloadFiles([path]);
     });
+
+    return this.#watcher;
   }
 
   getWatcher() {

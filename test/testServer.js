@@ -27,8 +27,8 @@ test("Url mappings for resource/index.html", async (t) => {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route1/index.html")
   });
-  
-  await server.close();  
+
+  await server.close();
 });
 
 test("Url mappings for resource.html", async (t) => {
@@ -47,7 +47,7 @@ test("Url mappings for resource.html", async (t) => {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route2.html")
   });
-  
+
   t.deepEqual(server.mapUrlToFilePath("/route2.html"), {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route2.html",)
@@ -74,7 +74,7 @@ test("Url mappings for resource.html and resource/index.html", async (t) => {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route3.html")
   });
-  
+
   t.deepEqual(server.mapUrlToFilePath("/route3.html"), {
     statusCode: 200,
     filepath: testNormalizeFilePath("test/stubs/route3.html",)
@@ -128,7 +128,7 @@ test("matchPassthroughAlias", async (t) => {
   // Map entry exists but file does not exist
   t.is(server.matchPassthroughAlias("/elsewhere/test.png"), false);
   t.is(server.matchPassthroughAlias("/elsewhere/another.css"), false);
-  
+
   // Map entry exists, file exists
   t.is(server.matchPassthroughAlias("/elsewhere/index.css"), "./test/stubs/with-css/style.css");
 
@@ -255,6 +255,14 @@ test("indexFileName option: return 404 when custom index file doesn't exist", as
   t.deepEqual(server.mapUrlToFilePath("/"), {
     statusCode: 404,
   });
+
+  await server.close();
+});
+
+test("Test watch getter", async (t) => {
+  let server = new EleventyDevServer("test-server", "./test/stubs/");
+
+  t.truthy(server.watcher);
 
   await server.close();
 });

@@ -22,6 +22,7 @@ if (!globalThis.URLPattern) {
 
 const DEFAULT_OPTIONS = {
   port: 8080,
+  reloadPort: false,    // Falsy uses same as `port`
   liveReload: true,     // Enable live reload at all
   showAllHosts: false,  // IP address based hosts (other than localhost)
   injectedScriptsFolder: ".11ty", // Change the name of the special folder used for injected scripts
@@ -376,8 +377,15 @@ class EleventyDevServer {
       integrityHash = ssri.fromData(scriptContents);
     }
 
+    let searchParams = new URLSearchParams();
+    if(this.options.reloadPort) {
+      searchParams.set("reloadPort", this.options.reloadPort);
+    }
+
+    let searchParamsStr = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
+
     // This isn’t super necessary because it’s a local file, but it’s included anyway
-    let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.injectedScriptsFolder}/reload-client.js">`}</script>`;
+    let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.injectedScriptsFolder}/reload-client.js${searchParamsStr}">`}</script>`;
 
     if (content.includes("</head>")) {
       return content.replace("</head>", `${script}</head>`);
@@ -506,7 +514,7 @@ class EleventyDevServer {
       }
     }
 
-    if(req.url === `/${this.options.injectedScriptsFolder}/reload-client.js`) {
+    if(req.url.startsWith(`/${this.options.injectedScriptsFolder}/reload-client.js`)) {
       if(this.options.liveReload) {
         res.setHeader("Content-Type", mime.getType("js"));
         return res.end(this._getFileContents("./client/reload-client.js"));
@@ -783,10 +791,15 @@ class EleventyDevServer {
 
   // Websocket Notifications
   setupReloadNotifier() {
-    let updateServer = new WebSocketServer({
+    let options = {};
+    if(this.options.reloadPort) {
+      options.port = this.options.reloadPort;
+    } else {
       // includes the port
-      server: this.server,
-    });
+      options.server = this.server;
+    }
+
+    let updateServer = new WebSocketServer(options);
 
     updateServer.on("connection", (ws) => {
       this.sendUpdateNotification({

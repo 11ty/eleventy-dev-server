@@ -106,7 +106,14 @@ class EleventyReload {
       return;
     }
 
-    let { protocol, host } = new URL(document.location.href);
+    let documentUrl = new URL(document.location.href);
+
+    let reloadPort = new URL(import.meta.url).searchParams.get("reloadPort");
+    if(reloadPort) {
+      documentUrl.port = reloadPort;
+    }
+
+    let { protocol, host } = documentUrl;
 
     // works with http (ws) and https (wss)
     let websocketProtocol = protocol.replace("http", "ws");

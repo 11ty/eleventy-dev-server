@@ -68,14 +68,15 @@ class Util {
     let newUrl = new URL(to.href);
 
     // morphdom wants to force href="style.css?_11ty" => href="style.css"
-    let isErasing = oldUrl.searchParams.has("_11ty") && !newUrl.searchParams.has("_11ty");
+    let paramName = EleventyReload.QUERY_PARAM;
+    let isErasing = oldUrl.searchParams.has(paramName) && !newUrl.searchParams.has(paramName);
     if(!isErasing) {
       // not a match if _11ty has a new value (not being erased)
       return false;
     }
 
-    oldUrl.searchParams.set("_11ty", "");
-    newUrl.searchParams.set("_11ty", "");
+    oldUrl.searchParams.set(paramName, "");
+    newUrl.searchParams.set(paramName, "");
 
     // is a match if erasing and the rest of the href matches too
     return oldUrl.toString() === newUrl.toString();
@@ -101,12 +102,33 @@ class Util {
 }
 
 class EleventyReload {
+  static QUERY_PARAM = "_11ty";
+
   static reloadTypes = {
-    css: () => {
+    css: (files, build = {}) => {
+      // Initiate a full page refresh if a CSS change is made but does match any stylesheet url
+      // `build.stylesheets` available in Eleventy v3.0.1-alpha.5+
+      if(Array.isArray(build.stylesheets)) {
+        let match = false;
+        for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
+          if (link.href) {
+            let url = new URL(link.href);
+            if(build.stylesheets.includes(url.pathname)) {
+              match = true;
+            }
+          }
+        }
+
+        if(!match) {
+          Util.fullPageReload();
+          return;
+        }
+      }
+
       for (let link of document.querySelectorAll(`link[rel="stylesheet"]`)) {
         if (link.href) {
           let url = new URL(link.href);
-          url.searchParams.set("_11ty", Date.now());
+          url.searchParams.set(this.QUERY_PARAM, Date.now());
           link.href = url.toString();
         }
       }

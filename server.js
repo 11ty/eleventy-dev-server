@@ -538,7 +538,7 @@ class EleventyDevServer {
 
         throw new Error(`Invalid return type from \`onRequest\` pattern for ${urlPatternString}: expected string, object literal, or Response instance.`);
       }
-    }
+    } // end onRequest
 
     if(req.url.startsWith(`/${this.options.injectedScriptsFolder}/reload-client.js`)) {
       if(this.options.liveReload) {
@@ -947,7 +947,7 @@ class EleventyDevServer {
     return urls;
   }
 
-  // [{ url, inputPath, content }]
+  // returns [{ url, inputPath, content }]
   getBuildTemplatesFromFilePath(path) {
     // We can skip this for non-html files, dom-diffing will not apply
     if(!path.endsWith(".html")) {
@@ -972,7 +972,7 @@ class EleventyDevServer {
 
     let subtype;
     if(!files.some((entry) => !entry.endsWith(".css"))) {
-      // all changes are css changes
+      // only if all changes are css changes
       subtype = "css";
     }
 

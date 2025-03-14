@@ -341,11 +341,23 @@ class EleventyDevServer {
     };
   }
 
-  _getFileContents(localpath, rootDir) {
-    if(this.options.useCache && this.fileCache[localpath]) {
-      return this.fileCache[localpath];
+  #readFile(filepath) {
+    if(this.options.useCache && this.fileCache[filepath]) {
+      return this.fileCache[filepath];
     }
 
+    let contents = fs.readFileSync(filepath, {
+      encoding: this.options.encoding,
+    });
+
+    if(this.options.useCache) {
+      this.fileCache[filepath] = contents;
+    }
+
+    return contents;
+  }
+
+  #getFileContents(localpath, rootDir) {
     let filepath;
     let searchLocations = [];
 
@@ -364,20 +376,13 @@ class EleventyDevServer {
       }
     }
 
-    let contents = fs.readFileSync(filepath, {
-      encoding: this.options.encoding,
-    });
-
-    if(this.options.useCache) {
-      this.fileCache[localpath] = contents;
-    }
-    return contents;
+    return this.#readFile(filepath);
   }
 
   augmentContentWithNotifier(content, inlineContents = false, options = {}) {
     let { integrityHash, scriptContents } = options;
     if(!scriptContents) {
-      scriptContents = this._getFileContents("./client/reload-client.js");
+      scriptContents = this.#getFileContents("./client/reload-client.js");
     }
     if(!integrityHash) {
       integrityHash = ssri.fromData(scriptContents);
@@ -538,12 +543,13 @@ class EleventyDevServer {
     if(req.url.startsWith(`/${this.options.injectedScriptsFolder}/reload-client.js`)) {
       if(this.options.liveReload) {
         res.setHeader("Content-Type", mime.getType("js"));
-        return res.end(this._getFileContents("./client/reload-client.js"));
+        return res.end(this.#getFileContents("./client/reload-client.js"));
       }
     } else if(req.url === `/${this.options.injectedScriptsFolder}/morphdom.js`) {
       if(this.options.domDiff) {
         res.setHeader("Content-Type", mime.getType("js"));
-        return res.end(this._getFileContents("./node_modules/morphdom/dist/morphdom-esm.js", path.resolve(".")));
+        let morphdomEsmPath = require.resolve("morphdom").replace("morphdom.js", "morphdom-esm.js");
+        return res.end(this.#readFile(morphdomEsmPath));
       }
     }
 
@@ -624,7 +630,7 @@ class EleventyDevServer {
       let isXHR = req.headers["sec-fetch-mode"] && req.headers["sec-fetch-mode"] != "navigate";
 
       if(this.options.liveReload !== false && !isXHR) {
-        let scriptContents = this._getFileContents("./client/reload-client.js");
+        let scriptContents = this.#getFileContents("./client/reload-client.js");
         let integrityHash = ssri.fromData(scriptContents);
 
         // Bare (not-custom) finalhandler error pages have a Content-Security-Policy `default-src 'none'` that

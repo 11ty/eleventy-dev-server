@@ -137,16 +137,11 @@ class EleventyReload {
     },
     default: async (files, build = {}) => {
       let morphed = false;
-
-      if((build.templates || []).length === 0) {
-        return;
-      }
-
-      let templates = (build?.templates || []).filter(({url, inputPath}) => {
+      let domdiffTemplates = (build?.templates || []).filter(({url, inputPath}) => {
         return url === document.location.pathname && (files || []).includes(inputPath);
       });
 
-      if(templates.length === 0) {
+      if(domdiffTemplates.length === 0) {
         Util.fullPageReload();
         return;
       }
@@ -155,7 +150,7 @@ class EleventyReload {
         // Important: using `./` allows the `.11ty` folder name to be changed
         const { default: morphdom } = await import(`./morphdom.js`);
 
-        for (let {url, inputPath, content} of templates) {
+        for (let {url, inputPath, content} of domdiffTemplates) {
           // Notable limitation: this won’t re-run script elements or JavaScript page lifecycle events (load/DOMContentLoaded)
           morphed = true;
 

@@ -41,8 +41,7 @@ try {
     ],
     default: defaults,
     alias: {
-      input: "dir", // input → dir
-      dir: "input", // dir → input
+      input: "dir",
     },
     unknown: function (unknownArgument) {
       throw new Error(

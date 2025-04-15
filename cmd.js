@@ -19,14 +19,16 @@ const debug = require("debug")("Eleventy:DevServer");
 
 try {
   const defaults = Cli.getDefaultOptions();
-  for(let key in defaults) {
-    if(key.toLowerCase() !== key) {
+  for (let key in defaults) {
+    if (key.toLowerCase() !== key) {
       defaults[key.toLowerCase()] = defaults[key];
       delete defaults[key];
     }
   }
 
-  const argv = require("minimist")(process.argv.slice(2), {
+  const mri = require("mri");
+
+  const argv = mri(process.argv.slice(2), {
     string: [
       "dir",
       "input", // alias for dir
@@ -38,6 +40,10 @@ try {
       "domdiff",
     ],
     default: defaults,
+    alias: {
+      input: "dir", // input → dir
+      dir: "input", // dir → input
+    },
     unknown: function (unknownArgument) {
       throw new Error(
         `We don’t know what '${unknownArgument}' is. Use --help to see the list of supported commands.`

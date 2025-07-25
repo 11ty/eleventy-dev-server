@@ -70,6 +70,55 @@ const DEFAULT_OPTIONS = {
   }
 }
 
+// Common web file extensions and their content types
+const CONTENT_TYPES = {
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+  '.br': 'application/x-brotli',
+  '.cjs': 'application/javascript',
+  '.css': 'text/css',
+  '.csv': 'text/csv',
+  '.eot': 'application/vnd.ms-fontobject',
+  '.eps': 'application/postscript',
+  '.gif': 'image/gif',
+  '.gz': 'application/gzip',
+  '.htm': 'text/html',
+  '.html': 'text/html',
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.js': 'application/javascript',
+  '.json': 'application/json',
+  '.m4v': 'video/mp4',
+  '.map': 'application/json',
+  '.md': 'text/markdown',
+  '.mjs': 'application/javascript',
+  '.mp3': 'audio/mpeg',
+  '.mp4': 'video/mp4',
+  '.ogg': 'audio/ogg',
+  '.otf': 'font/otf',
+  '.pdf': 'application/pdf',
+  '.png': 'image/png',
+  '.rss': 'application/rss+xml',
+  '.svg': 'image/svg+xml',
+  '.tar': 'application/x-tar',
+  '.tif': 'image/tiff',
+  '.tiff': 'image/tiff',
+  '.ttf': 'font/ttf',
+  '.txt': 'text/plain',
+  '.wasm': 'application/wasm',
+  '.wav': 'audio/wav',
+  '.webm': 'video/webm',
+  '.webmanifest': 'application/manifest+json',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.xml': 'application/xml',
+  '.yaml': 'application/yaml',
+  '.yml': 'application/yaml',
+  '.zip': 'application/zip',
+};
+
 export default class EleventyDevServer {
   #watcher;
   #serverClosing;
@@ -442,62 +491,11 @@ export default class EleventyDevServer {
       return contentType;
     }
 
-    // Common web file extensions and their content types
-    const commonTypes = {
-      '.css': 'text/css',
-      '.js': 'application/javascript',
-      '.json': 'application/json',
-      '.txt': 'text/plain',
-      '.ico': 'image/x-icon',
-      '.svg': 'image/svg+xml',
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif',
-      '.avif': 'image/avif',
-      '.bmp': 'image/bmp',
-      '.tiff': 'image/tiff',
-      '.tif': 'image/tiff',
-      '.webp': 'image/webp',
-      '.psd': 'image/vnd.adobe.photoshop',
-      '.ai': 'application/postscript',
-      '.eps': 'application/postscript',
-      '.woff': 'font/woff',
-      '.woff2': 'font/woff2',
-      '.ttf': 'font/ttf',
-      '.eot': 'application/vnd.ms-fontobject',
-      '.otf': 'font/otf',
-      '.webm': 'video/webm',
-      '.mp4': 'video/mp4',
-      '.m4v': 'video/mp4',
-      '.mp3': 'audio/mpeg',
-      '.wav': 'audio/wav',
-      '.ogg': 'audio/ogg',
-      '.pdf': 'application/pdf',
-      '.xml': 'application/xml',
-      '.rss': 'application/rss+xml',
-      '.zip': 'application/zip',
-      '.gz': 'application/gzip',
-      '.br': 'application/x-brotli',
-      '.tar': 'application/x-tar',
-      '.md': 'text/markdown',
-      '.yaml': 'application/yaml',
-      '.yml': 'application/yaml',
-      '.csv': 'text/csv',
-      '.html': 'text/html',
-      '.htm': 'text/html',
-      '.wasm': 'application/wasm',
-      '.mjs': 'application/javascript',
-      '.cjs': 'application/javascript',
-      '.map': 'application/json',
-      '.webmanifest': 'application/manifest+json'
-    };
-
     const ext = path.extname(filepath).toLowerCase();
     
     // First check our common types
-    if (commonTypes[ext]) {
-      contentType = commonTypes[ext];
+    if (CONTENT_TYPES[ext]) {
+      contentType = CONTENT_TYPES[ext];
     } else {
       // Fallback to mime package for other types
       contentType = mime.getType(filepath);

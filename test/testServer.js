@@ -1,6 +1,6 @@
-const test = require("ava");
-const path = require("path");
-const EleventyDevServer = require("../");
+import path from "node:path";
+import test from "ava";
+import EleventyDevServer from "../server.js";
 
 function testNormalizeFilePath(filepath) {
   return filepath.split("/").join(path.sep);

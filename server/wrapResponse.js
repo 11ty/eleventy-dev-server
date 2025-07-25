@@ -11,7 +11,7 @@ function getContentType(headers) {
 }
 
 // Inspired by `resp-modifier` https://github.com/shakyShane/resp-modifier/blob/4a000203c9db630bcfc3b6bb8ea2abc090ae0139/index.js
-function wrapResponse(resp, transformHtml) {
+export default function wrapResponse(resp, transformHtml) {
   resp._wrappedOriginalWrite = resp.write;
   resp._wrappedOriginalWriteHead = resp.writeHead;
   resp._wrappedOriginalEnd = resp.end;
@@ -126,5 +126,3 @@ function wrapResponse(resp, transformHtml) {
 
   return resp;
 }
-
-module.exports = wrapResponse;

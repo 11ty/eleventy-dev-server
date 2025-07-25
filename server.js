@@ -1,24 +1,27 @@
-const path = require("node:path");
-const fs = require("node:fs");
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { createSecureServer } from "node:http2";
+import { createServer } from "node:http";
 
-const finalhandler = require("finalhandler");
-const WebSocket = require("ws");
-const { WebSocketServer } = WebSocket;
-const mime = require("mime");
-const ssri = require("ssri");
-const send = require("send");
-const chokidar = require("chokidar");
-const { TemplatePath, isPlainObject } = require("@11ty/eleventy-utils");
+import "urlpattern-polyfill";
+import finalhandler from "finalhandler";
+import WebSocket, { WebSocketServer } from "ws";
+import mime from "mime";
+import ssri from "ssri";
+import send from "send";
+import chokidar from "chokidar";
+import { TemplatePath, isPlainObject } from "@11ty/eleventy-utils";
+import debugUtil from "debug";
 
-const debug = require("debug")("Eleventy:DevServer");
+import wrapResponse from "./server/wrapResponse.js";
+import ipAddress from "./server/ipAddress.js";
 
+const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
-const wrapResponse = require("./server/wrapResponse.js");
-const ipAddress = require("./server/ipAddress.js");
-
-if (!globalThis.URLPattern) {
-  require("urlpattern-polyfill");
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const debug = debugUtil("Eleventy:DevServer");
 
 const DEFAULT_OPTIONS = {
   port: 8080,
@@ -67,7 +70,7 @@ const DEFAULT_OPTIONS = {
   }
 }
 
-class EleventyDevServer {
+export default class EleventyDevServer {
   #watcher;
   #serverClosing;
   #serverState;
@@ -357,6 +360,7 @@ class EleventyDevServer {
     return contents;
   }
 
+  // Used for the reload client only
   #getFileContents(localpath, rootDir) {
     let filepath;
     let searchLocations = [];
@@ -367,7 +371,6 @@ class EleventyDevServer {
 
     // fallbacks for file:../ installations
     searchLocations.push(TemplatePath.absolutePath(__dirname, localpath));
-    searchLocations.push(TemplatePath.absolutePath(__dirname, "../../../", localpath));
 
     for(let loc of searchLocations) {
       if(fs.existsSync(loc)) {
@@ -700,8 +703,6 @@ class EleventyDevServer {
     // Check for secure server requirements, otherwise use HTTP
     let { key, cert } = this.options.https;
     if(key && cert) {
-      const { createSecureServer } = require("http2");
-
       let options = {
         allowHTTP1: true,
 
@@ -712,8 +713,6 @@ class EleventyDevServer {
       this._server = createSecureServer(options, this.onRequestHandler.bind(this));
       this._serverProtocol = "https:";
     } else {
-      const { createServer } = require("http");
-
       this._server = createServer(this.onRequestHandler.bind(this));
       this._serverProtocol = "http:";
     }
@@ -1020,5 +1019,3 @@ class EleventyDevServer {
     });
   }
 }
-
-module.exports = EleventyDevServer;

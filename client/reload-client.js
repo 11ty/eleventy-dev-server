@@ -302,7 +302,7 @@ class EleventyReload {
 
     socket.addEventListener("close", () => {
       this.connectionMessageShown = false;
-      this.addReconnectListeners();
+      this.addReconnectListeners(150);
     });
   }
 
@@ -319,11 +319,13 @@ class EleventyReload {
     await EleventyReload.reloadTypes[subtype](files, build);
   }
 
-  addReconnectListeners() {
+  addReconnectListeners(delay = 0) {
     this.removeReconnectListeners();
 
-    window.addEventListener("focus", this.reconnectEventCallback);
-    window.addEventListener("visibilitychange", this.reconnectEventCallback);
+    setTimeout(() => {
+      window.addEventListener("focus", this.reconnectEventCallback);
+      window.addEventListener("visibilitychange", this.reconnectEventCallback);
+    }, delay);
   }
 
   removeReconnectListeners() {

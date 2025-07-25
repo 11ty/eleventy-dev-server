@@ -5,17 +5,19 @@ const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
 
 export const Logger = {
-  info: function(...args) {
+  info(...args) {
     console.log( "[11ty/eleventy-dev-server]", ...args );
   },
-  error: function(...args) {
+  error(...args) {
     console.error( "[11ty/eleventy-dev-server]", ...args );
   },
-  fatal: function(...args) {
+  fatal(...args) {
     Logger.error(...args);
     process.exitCode = 1;
   },
-  log: Logger.info,
+  log(...args) {
+    return Logger.info(...args);
+  }
 };
 
 export class Cli {

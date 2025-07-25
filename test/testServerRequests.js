@@ -1,7 +1,6 @@
-const test = require("ava");
-const path = require("path");
-const http = require("http");
-const EleventyDevServer = require("../");
+import test from "ava";
+import http from "http";
+import EleventyDevServer from "../server.js";
 
 function getOptions(options = {}) {
   options.logger = {

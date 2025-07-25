@@ -1,7 +1,10 @@
-const pkg = require("./package.json");
-const EleventyDevServer = require("./server.js");
+import { createRequire } from "node:module";
+import EleventyDevServer from "./server.js";
 
-const Logger = {
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
+
+export const Logger = {
   info: function(...args) {
     console.log( "[11ty/eleventy-dev-server]", ...args );
   },
@@ -11,12 +14,11 @@ const Logger = {
   fatal: function(...args) {
     Logger.error(...args);
     process.exitCode = 1;
-  }
+  },
+  log: Logger.info,
 };
 
-Logger.log = Logger.info;
-
-class Cli {
+export class Cli {
   static getVersion() {
     return pkg.version;
   }
@@ -81,9 +83,4 @@ Arguments:
       return this.server.close();
     }
   }
-}
-
-module.exports = {
-  Logger,
-  Cli
 }

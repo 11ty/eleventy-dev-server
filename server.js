@@ -17,6 +17,7 @@ import debugUtil from "debug";
 
 import wrapResponse from "./server/wrapResponse.js";
 import ipAddress from "./server/ipAddress.js";
+import { findFiles } from "./server/globUtil.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
@@ -174,9 +175,10 @@ export default class EleventyDevServer {
       return this.#watcher;
     }
 
-    debug("Watching %O", this.options.watch);
+    let files = findFiles(this.options.watch);
+    debug("Watching globs: %O, files: %O", this.options.watch, files);
     // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
-    this.#watcher = chokidar.watch(this.options.watch, {
+    this.#watcher = chokidar.watch(files, {
       // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
 
       ignored: ["**/node_modules/**", ".git"],
@@ -210,11 +212,10 @@ export default class EleventyDevServer {
     }
   }
 
-  watchFiles(files) {
-    if(Array.isArray(files) && files.length > 0) {
-      files = files.map(entry => TemplatePath.stripLeadingDotSlash(entry));
-
-      debug("Also watching %O", files);
+  watchFiles(globs) {
+    if(Array.isArray(globs) && globs.length > 0) {
+      let files = findFiles(globs);
+      debug("Also watching globs: %O files: %O", globs, files);
       this.watcher.add(files);
     }
   }

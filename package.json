@@ -46,9 +46,11 @@
     "mime": "^4.0.7",
     "minimist": "^1.2.8",
     "morphdom": "^2.7.5",
+    "picomatch": "^4.0.3",
     "please-upgrade-node": "^3.2.0",
     "send": "^1.2.0",
     "ssri": "^12.0.0",
+    "tinyglobby": "^0.2.14",
     "urlpattern-polyfill": "^10.1.0",
     "ws": "^8.18.3"
   },

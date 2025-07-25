@@ -40,7 +40,7 @@
   "homepage": "https://github.com/11ty/eleventy-dev-server/",
   "dependencies": {
     "@11ty/eleventy-utils": "^2.0.7",
-    "chokidar": "^4.0.0",
+    "chokidar": "^4.0.3",
     "debug": "^4.4.1",
     "finalhandler": "^2.1.0",
     "mime": "^4.0.7",

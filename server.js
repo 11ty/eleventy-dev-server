@@ -43,7 +43,7 @@ const DEFAULT_OPTIONS = {
   messageOnStart: ({ hosts, startupTime, version, options }) => {
     let hostsStr = " started";
     if(Array.isArray(hosts) && hosts.length > 0) {
-      // TODO what happens when the cert doesn’t cover non-localhost hosts?
+      // TODO what happens when the cert doesn't cover non-localhost hosts?
       hostsStr = ` at ${hosts.join(" or ")}`;
     }
 
@@ -398,7 +398,7 @@ export default class EleventyDevServer {
 
     let searchParamsStr = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
 
-    // This isn’t super necessary because it’s a local file, but it’s included anyway
+    // This isn't super necessary because it's a local file, but it's included anyway
     let script = `<script type="module" integrity="${integrityHash}"${inlineContents ? `>${scriptContents}` : ` src="/${this.options.injectedScriptsFolder}/reload-client.js${searchParamsStr}">`}</script>`;
 
     if (content.includes("</head>")) {
@@ -418,7 +418,7 @@ export default class EleventyDevServer {
       return content.replace("</title>", `</title>${script}`);
     }
 
-    // If you’ve reached this section, your HTML is invalid!
+    // If you've reached this section, your HTML is invalid!
     // We want to be super forgiving here, because folks might be in-progress editing the document!
     if (content.includes("</body>")) {
       return content.replace("</body>", `${script}</body>`);
@@ -442,16 +442,85 @@ export default class EleventyDevServer {
       return contentType;
     }
 
-    let mimeType = mime.getType(filepath);
-    if (!mimeType) {
+    // Common web file extensions and their content types
+    const commonTypes = {
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.json': 'application/json',
+      '.txt': 'text/plain',
+      '.ico': 'image/x-icon',
+      '.svg': 'image/svg+xml',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.avif': 'image/avif',
+      '.bmp': 'image/bmp',
+      '.tiff': 'image/tiff',
+      '.tif': 'image/tiff',
+      '.webp': 'image/webp',
+      '.psd': 'image/vnd.adobe.photoshop',
+      '.ai': 'application/postscript',
+      '.eps': 'application/postscript',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+      '.ttf': 'font/ttf',
+      '.eot': 'application/vnd.ms-fontobject',
+      '.otf': 'font/otf',
+      '.webm': 'video/webm',
+      '.mp4': 'video/mp4',
+      '.m4v': 'video/mp4',
+      '.mp3': 'audio/mpeg',
+      '.wav': 'audio/wav',
+      '.ogg': 'audio/ogg',
+      '.pdf': 'application/pdf',
+      '.xml': 'application/xml',
+      '.rss': 'application/rss+xml',
+      '.zip': 'application/zip',
+      '.gz': 'application/gzip',
+      '.br': 'application/x-brotli',
+      '.tar': 'application/x-tar',
+      '.md': 'text/markdown',
+      '.yaml': 'application/yaml',
+      '.yml': 'application/yaml',
+      '.csv': 'text/csv',
+      '.html': 'text/html',
+      '.htm': 'text/html',
+      '.wasm': 'application/wasm',
+      '.mjs': 'application/javascript',
+      '.cjs': 'application/javascript',
+      '.map': 'application/json',
+      '.webmanifest': 'application/manifest+json'
+    };
+
+    const ext = path.extname(filepath).toLowerCase();
+    
+    // First check our common types
+    if (commonTypes[ext]) {
+      contentType = commonTypes[ext];
+    } else {
+      // Fallback to mime package for other types
+      contentType = mime.getType(filepath);
+    }
+
+    if (!contentType) {
       return;
     }
 
-    contentType = mimeType;
+    // Add charset for text-based content types
+    const textTypes = [
+      'text/',
+      'text/html',
+      'application/javascript',
+      'application/json',
+      'application/xml',
+      'application/yaml',
+      'application/x-www-form-urlencoded'
+    ];
 
-    // We only want to append charset if the header is not already set
-    if (contentType === "text/html") {
-      contentType = `text/html; charset=${this.options.encoding}`;
+    // Check if the content type matches any text-based MIME types to determine if charset should be added
+    if (textTypes.some(type => contentType.startsWith(type))) {
+      contentType = `${contentType}; charset=${this.options.encoding}`;
     }
 
     return contentType;
@@ -870,7 +939,7 @@ export default class EleventyDevServer {
         resolve();
       });
 
-      // Note: this method won’t exist for updateServer
+      // Note: this method won't exist for updateServer
       if("closeAllConnections" in server) {
         // Node 18.2+
         server.closeAllConnections();
@@ -1002,7 +1071,7 @@ export default class EleventyDevServer {
       build.templates = build.templates
         .filter(entry => {
           if(!this.options.domDiff) {
-            // Don’t include any files if the dom diffing option is disabled
+            // Don't include any files if the dom diffing option is disabled
             return false;
           }
 

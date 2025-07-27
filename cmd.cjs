@@ -26,7 +26,8 @@ try {
     }
   }
 
-  const argv = require("minimist")(process.argv.slice(2), {
+  const mri = require("mri");
+  const argv = mri(process.argv.slice(2), {
     string: [
       "dir",
       "input", // alias for dir
@@ -38,12 +39,21 @@ try {
       "domdiff",
     ],
     default: defaults,
-    unknown: function (unknownArgument) {
-      throw new Error(
-        `We don’t know what '${unknownArgument}' is. Use --help to see the list of supported commands.`
-      );
-    },
   });
+
+  // Manual unknown argument validation for minimist compatibility
+  // mri doesn't provide the same unknown flag detection, so we replicate it
+  const knownFlags = [
+    "dir", "input", "port", "version", "help", "domdiff"
+  ];
+
+  for (const key of Object.keys(argv)) {
+    if (key !== '_' && !knownFlags.includes(key)) {
+      throw new Error(
+        `We don't know what '${key}' is. Use --help to see the list of supported commands.`
+      );
+    }
+  }
 
   debug("command: eleventy-dev-server %o", argv);
 

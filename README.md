@@ -7,20 +7,15 @@ A minimal, modern, generic, hot-reloading local web server to help web developer
 ## ➡ [Documentation](https://www.11ty.dev/docs/watch-serve/#eleventy-dev-server)
 
 - Please star [Eleventy on GitHub](https://github.com/11ty/eleventy/)!
-- Follow us on Twitter [@eleven_ty](https://twitter.com/eleven_ty)
-- Support [11ty on Open Collective](https://opencollective.com/11ty)
-- [11ty on npm](https://www.npmjs.com/org/11ty)
-- [11ty on GitHub](https://github.com/11ty)
-
-[![npm Version](https://img.shields.io/npm/v/@11ty/eleventy-dev-server.svg?style=for-the-badge)](https://www.npmjs.com/package/@11ty/eleventy-dev-server)
+- [![npm Version](https://img.shields.io/npm/v/@11ty/eleventy-dev-server.svg?style=for-the-badge)](https://www.npmjs.com/package/@11ty/eleventy-dev-server)
 
 ## Installation
 
-This is bundled with `@11ty/eleventy` (and you do not need to install it separately) in Eleventy v2.0.
+This is bundled with `@11ty/eleventy` (and you do not need to install it separately) in Eleventy v2.0 and newer.
 
 ## CLI
 
-Eleventy Dev Server now also includes a CLI. The CLI is for **standalone** (non-Eleventy) use only: separate installation is unnecessary if you’re using this server with `@11ty/eleventy`.
+Eleventy Dev Server now also includes a CLI. The CLI is for **standalone** (non-Eleventy) use only: separate installation is _unnecessary_ if you’re using this server with `@11ty/eleventy`.
 
 ```sh
 npm install -g @11ty/eleventy-dev-server
@@ -57,4 +52,5 @@ npm run test
 
 ## Changelog
 
-* `v2.0.0` bumps Node.js minimum to 18.
+- `v3.0.0` bumps Node.js minimum to 20, [`chokidar@4` drops support for globs in `watch` option](https://github.com/paulmillr/chokidar#upgrading)
+- `v2.0.0` bumps Node.js minimum to 18.

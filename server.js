@@ -49,7 +49,9 @@ const DEFAULT_OPTIONS = {
 
     return `Server${hostsStr}${options.showVersion ? ` (v${version})` : ""}`;
   },
-
+  messageOnClose() {
+    return `Server closed.`;
+  },
   onRequest: {},        // Maps URLPatterns to dynamic callback functions that run on a request from a client.
 
   // Example:
@@ -175,6 +177,7 @@ export default class EleventyDevServer {
     }
 
     debug("Watching files: %O", this.options.watch);
+
     // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
     this.#watcher = chokidar.watch(this.options.watch, {
       // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
@@ -196,6 +199,11 @@ export default class EleventyDevServer {
 
     this.#watcher.on("add", (path) => {
       this.logger.log( `File added: ${path} (skips build)` );
+      this.reloadFiles([path]);
+    });
+
+    this.#watcher.on("unlink", (path) => {
+      this.logger.log( `File deleted: ${path} (skips build)` );
       this.reloadFiles([path]);
     });
 
@@ -807,21 +815,7 @@ export default class EleventyDevServer {
 
     this._server.on("listening", (e) => {
       this.setupReloadNotifier();
-
-      let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
-      let hosts = this.getHosts();
-      let message = logMessageCallback({
-        hosts,
-        localhostUrl: this.getServerUrl("localhost"),
-        options: this.options,
-        version: pkg.version,
-        startupTime: Date.now() - this.start,
-      });
-
-      if(message) {
-        this.logger.info(message);
-      }
-
+      this.logStartMessage();
       this.#readyResolve();
     });
 
@@ -974,11 +968,40 @@ export default class EleventyDevServer {
     this.#serverClosing = Promise.all(promises).then(() => {
       this.#serverState = "CLOSED";
       this.#serverClosing = undefined;
+      this.logCloseMessage();
     });
 
     this.#serverState = "CLOSING";
 
     return this.#serverClosing;
+  }
+
+  logStartMessage() {
+    let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
+    let hosts = this.getHosts();
+    let message = logMessageCallback({
+      hosts,
+      localhostUrl: this.getServerUrl("localhost"),
+      options: this.options,
+      version: pkg.version,
+      startupTime: Date.now() - this.start,
+    });
+
+    if(message && typeof this.logger?.info === "function") {
+      this.logger.info(message);
+    }
+  }
+
+  logCloseMessage() {
+    let logMessageCallback = typeof this.options.messageOnClose === "function" ? this.options.messageOnClose : () => false;
+    let message = logMessageCallback({
+      options: this.options,
+      version: pkg.version,
+    });
+
+    if(message && typeof this.logger?.info === "function") {
+      this.logger.info(message);
+    }
   }
 
   sendError({ error }) {

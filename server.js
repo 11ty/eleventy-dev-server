@@ -36,6 +36,7 @@ const DEFAULT_OPTIONS = {
   encoding: "utf-8",    // Default file encoding
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
+  chokidarOptions: {},  // Options to configure chokidar
   aliases: {},          // Aliasing feature
   indexFileName: "index.html", // Allow custom index file name
   useCache: false,      // Use a cache for file contents
@@ -177,20 +178,21 @@ export default class EleventyDevServer {
     }
 
     debug("Watching files: %O", this.options.watch);
-
     // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
-    this.#watcher = chokidar.watch(this.options.watch, {
+    this.#watcher = chokidar.watch(this.options.watch, Object.assign({
       // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
 
-      ignored: ["**/node_modules/**", ".git"],
       ignoreInitial: true,
+
+      // This is overridden with a function in @11ty/eleventy@v4.0.0-alpha.1
+      ignored: ["**/node_modules/**", ".git"],
 
       // same values as Eleventy
       awaitWriteFinish: {
         stabilityThreshold: 150,
         pollInterval: 25,
       },
-    });
+    }, this.options.chokidarOptions));
 
     this.#watcher.on("change", (path) => {
       this.logger.log( `File changed: ${path} (skips build)` );
@@ -218,10 +220,10 @@ export default class EleventyDevServer {
     }
   }
 
-  watchFiles(files) {
-    if(Array.isArray(files) && files.length > 0) {
-      debug("Also watching: %O", files);
-      this.watcher.add(files);
+  watchFiles(targets) {
+    if(Array.isArray(targets) && targets.length > 0) {
+      debug("Also watching: %O", targets);
+      this.watcher.add(targets);
     }
   }
 

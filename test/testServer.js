@@ -2,12 +2,21 @@ import path from "node:path";
 import test from "ava";
 import EleventyDevServer from "../server.js";
 
+function getOptions(options = {}) {
+  options.logger = {
+    info: function() {},
+    log: function() {},
+    error: function() {},
+  };
+  return options;
+}
+
 function testNormalizeFilePath(filepath) {
   return filepath.split("/").join(path.sep);
 }
 
 test("Url mappings for resource/index.html", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   t.deepEqual(server.mapUrlToFilePath("/route1/"), {
     statusCode: 200,
@@ -32,7 +41,7 @@ test("Url mappings for resource/index.html", async (t) => {
 });
 
 test("Url mappings for resource.html", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   t.deepEqual(server.mapUrlToFilePath("/route2/"), {
     statusCode: 301,
@@ -57,7 +66,7 @@ test("Url mappings for resource.html", async (t) => {
 });
 
 test("Url mappings for resource.html and resource/index.html", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   // Production mismatch warning: Netlify 301 redirects to /route3 here
   t.deepEqual(server.mapUrlToFilePath("/route3/"), {
@@ -84,7 +93,7 @@ test("Url mappings for resource.html and resource/index.html", async (t) => {
 });
 
 test("Url mappings for missing resource", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   // 404s
   t.deepEqual(server.mapUrlToFilePath("/does-not-exist/"), {
@@ -95,7 +104,7 @@ test("Url mappings for missing resource", async (t) => {
 });
 
 test("Url mapping for a filename with a space in it", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   t.deepEqual(server.mapUrlToFilePath("/route space.html"), {
     statusCode: 200,
@@ -106,7 +115,7 @@ test("Url mapping for a filename with a space in it", async (t) => {
 });
 
 test("matchPassthroughAlias", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   // url => project root input
   server.setAliases({
@@ -137,9 +146,9 @@ test("matchPassthroughAlias", async (t) => {
 
 
 test("pathPrefix matching", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     pathPrefix: "/pathprefix/"
-  });
+  }));
 
   t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
     statusCode: 200,
@@ -161,9 +170,9 @@ test("pathPrefix matching", async (t) => {
 });
 
 test("pathPrefix without leading slash", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     pathPrefix: "pathprefix/"
-  });
+  }));
 
   t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
     statusCode: 200,
@@ -185,9 +194,9 @@ test("pathPrefix without leading slash", async (t) => {
 });
 
 test("pathPrefix without trailing slash", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     pathPrefix: "/pathprefix"
-  });
+  }));
 
   t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
     statusCode: 200,
@@ -209,9 +218,9 @@ test("pathPrefix without trailing slash", async (t) => {
 });
 
 test("pathPrefix without leading or trailing slash", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", {
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({
     pathPrefix: "pathprefix"
-  });
+  }));
 
   t.deepEqual(server.mapUrlToFilePath("/pathprefix/route1/"), {
     statusCode: 200,
@@ -233,7 +242,7 @@ test("pathPrefix without leading or trailing slash", async (t) => {
 });
 
 test("indexFileName option: serve custom index when provided", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", { indexFileName: 'custom-index.html' });
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({ indexFileName: 'custom-index.html' }));
 
   t.deepEqual(server.mapUrlToFilePath("/"), {
     statusCode: 200,
@@ -250,7 +259,7 @@ test("indexFileName option: serve custom index when provided", async (t) => {
 });
 
 test("indexFileName option: return 404 when custom index file doesn't exist", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/", { indexFileName: 'does-not-exist.html' });
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions({ indexFileName: 'does-not-exist.html' }));
 
   t.deepEqual(server.mapUrlToFilePath("/"), {
     statusCode: 404,
@@ -260,7 +269,7 @@ test("indexFileName option: return 404 when custom index file doesn't exist", as
 });
 
 test("Test watch getter", async (t) => {
-  let server = new EleventyDevServer("test-server", "./test/stubs/");
+  let server = new EleventyDevServer("test-server", "./test/stubs/", getOptions());
 
   t.truthy(server.watcher);
 

@@ -5,6 +5,7 @@ import EleventyDevServer from "../server.js";
 function getOptions(options = {}) {
   options.logger = {
     info: function() {},
+    log: function() {},
     error: function() {},
   };
   options.portReassignmentRetryCount = 100;

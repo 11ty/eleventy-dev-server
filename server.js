@@ -37,6 +37,7 @@ const DEFAULT_OPTIONS = {
   pathPrefix: "/",      // May be overridden by Eleventy, adds a virtual base directory to your project
   watch: [],            // Globs to pass to separate dev server chokidar for watching
   chokidarOptions: {},  // Options to configure chokidar
+  chokidar: undefined,  // Override to watch instance (bypasses both `watch` and `chokidarOptions`)
   aliases: {},          // Aliasing feature
   indexFileName: "index.html", // Allow custom index file name
   useCache: false,      // Use a cache for file contents
@@ -144,12 +145,15 @@ export default class EleventyDevServer {
       throw new Error("Missing `dir` to serve.");
     }
     this.dir = dir;
-    this.logger = this.options.logger;
     this.getWatcher();
 
     this.#readyPromise = new Promise((resolve) => {
       this.#readyResolve = resolve;
     })
+  }
+
+  get logger() {
+    return this.options.logger;
   }
 
   normalizeOptions(options = {}) {
@@ -178,21 +182,21 @@ export default class EleventyDevServer {
     }
 
     debug("Watching files: %O", this.options.watch);
-    // TODO if using Eleventy and `watch` option includes output folder (_site) this will trigger two update events!
-    this.#watcher = chokidar.watch(this.options.watch, Object.assign({
-      // TODO allow chokidar configuration extensions (or re-use the ones in Eleventy)
-
-      ignoreInitial: true,
-
-      // This is overridden with a function in @11ty/eleventy@v4.0.0-alpha.1
-      ignored: ["**/node_modules/**", ".git"],
-
-      // same values as Eleventy
-      awaitWriteFinish: {
-        stabilityThreshold: 150,
-        pollInterval: 25,
-      },
-    }, this.options.chokidarOptions));
+    if(!this.options.chokidar) {
+      this.#watcher = chokidar.watch(this.options.watch, Object.assign({
+        ignoreInitial: true,
+  
+        ignored: ["**/node_modules/**", ".git"],
+  
+        // same values as Eleventy core
+        awaitWriteFinish: {
+          stabilityThreshold: 150,
+          pollInterval: 25,
+        },
+      }, this.options.chokidarOptions));
+    } else {
+      this.#watcher = this.options.chokidar;
+    }
 
     this.#watcher.on("change", (path) => {
       this.logger.log( `File changed: ${path} (skips build)` );
@@ -215,7 +219,7 @@ export default class EleventyDevServer {
   getWatcher() {
     // only initialize watcher if watcher via getWatcher if has targets
     // this.watcher in watchFiles() is a manual workaround
-    if(this.options.watch.length > 0) {
+    if(this.options.watch.length > 0 || this.options.chokidar) {
       return this.watcher;
     }
   }
@@ -978,32 +982,29 @@ export default class EleventyDevServer {
     return this.#serverClosing;
   }
 
-  logStartMessage() {
-    let logMessageCallback = typeof this.options.messageOnStart === "function" ? this.options.messageOnStart : () => false;
-    let hosts = this.getHosts();
-    let message = logMessageCallback({
-      hosts,
-      localhostUrl: this.getServerUrl("localhost"),
+  #log(callback, options) {
+    let fn = typeof callback === "function" ? callback : () => false;
+    let message = fn(Object.assign({
       options: this.options,
       version: pkg.version,
-      startupTime: Date.now() - this.start,
-    });
+    }, options));
 
     if(message && typeof this.logger?.info === "function") {
       this.logger.info(message);
     }
   }
 
-  logCloseMessage() {
-    let logMessageCallback = typeof this.options.messageOnClose === "function" ? this.options.messageOnClose : () => false;
-    let message = logMessageCallback({
-      options: this.options,
-      version: pkg.version,
+  logStartMessage() {
+    let hosts = this.getHosts();
+    this.#log(this.options.messageOnStart, {
+      hosts,
+      localhostUrl: this.getServerUrl("localhost"),
+      startupTime: Date.now() - this.start,
     });
+  }
 
-    if(message && typeof this.logger?.info === "function") {
-      this.logger.info(message);
-    }
+  logCloseMessage() {
+    this.#log(this.options.messageOnClose);
   }
 
   sendError({ error }) {

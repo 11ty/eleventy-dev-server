@@ -47,6 +47,7 @@
     "mime": "^4.1.0",
     "minimist": "^1.2.8",
     "morphdom": "^2.7.7",
+    "please-upgrade-node": "^3.2.0",
     "send": "^1.2.0",
     "ssri": "^13.0.0",
     "urlpattern-polyfill": "^10.1.0",

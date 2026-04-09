@@ -3,7 +3,7 @@
 const pkg = require("./package.json");
 
 // Node check
-require("please-upgrade-node")(pkg, {
+require("@11ty/node-version-check")(pkg, {
   message: function (requiredVersion) {
     return (
       "eleventy-dev-server requires Node " +
